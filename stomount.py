@@ -17,12 +17,29 @@ import threading
 import subprocess
 import zipfile
 import urllib.request
+
+# ---------------------------------------------------------------------------
+# High-DPI / HD Display Awareness for Windows
+# Eliminates blurry text/DWM scaling and renders razor-sharp HD typography
+# ---------------------------------------------------------------------------
+if sys.platform == "win32":
+    try:
+        import ctypes
+        # Set Per-Monitor DPI Awareness (V2) for Windows 10/11
+        ctypes.windll.shcore.SetProcessDpiAwareness(2)
+    except Exception:
+        try:
+            import ctypes
+            ctypes.windll.user32.SetProcessDPIAware()
+        except Exception:
+            pass
+
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
 
 # Application Metadata
 APP_NAME = "StoMount"
-APP_VERSION = "1.1.0"
+APP_VERSION = "1.2.0"
 CONFIG_DIR = os.path.join(os.environ.get("APPDATA", os.path.expanduser("~")), "StoMount")
 CONFIG_FILE = os.path.join(CONFIG_DIR, "config.json")
 
@@ -456,11 +473,29 @@ class GuideDialog(tk.Toplevel):
         self.grab_set()
         self.configure(bg="#f8fafc")
 
-        # Top banner
+        # Top banner with HD App Icon
         header = tk.Frame(self, bg="#0f172a", padx=18, pady=14)
         header.pack(fill=tk.X)
-        tk.Label(header, text="📖 How to Use StoMount", font=("Segoe UI", 13, "bold"), bg="#0f172a", fg="#38bdf8").pack(anchor="w")
-        tk.Label(header, text="Step-by-step instructions to turn your SD card into fast internal storage.", font=("Segoe UI", 9), bg="#0f172a", fg="#94a3b8").pack(anchor="w", pady=(2, 0))
+
+        self.guide_icon_img = None
+        for candidate_dir in [getattr(sys, "_MEIPASS", None), os.path.dirname(os.path.abspath(__file__))]:
+            if candidate_dir:
+                p = os.path.join(candidate_dir, "app_icon_48.png")
+                if os.path.exists(p):
+                    try:
+                        self.guide_icon_img = tk.PhotoImage(file=p)
+                        break
+                    except Exception:
+                        pass
+
+        if self.guide_icon_img:
+            icon_box = tk.Label(header, image=self.guide_icon_img, bg="#0f172a")
+            icon_box.pack(side=tk.LEFT, padx=(0, 12))
+
+        title_box = tk.Frame(header, bg="#0f172a")
+        title_box.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        tk.Label(title_box, text="📖 How to Use StoMount", font=("Segoe UI", 13, "bold"), bg="#0f172a", fg="#38bdf8").pack(anchor="w")
+        tk.Label(title_box, text="Step-by-step instructions to turn your SD card into fast internal storage.", font=("Segoe UI", 9), bg="#0f172a", fg="#94a3b8").pack(anchor="w", pady=(2, 0))
 
         content = tk.Frame(self, bg="#f8fafc", padx=20, pady=16)
         content.pack(fill=tk.BOTH, expand=True)
@@ -707,24 +742,39 @@ class StoMountApp(tk.Tk):
 
     def create_widgets(self):
         # ===================================================================
-        # 1. Top Navigation & Status Bar
+        # 1. Top Navigation & Status Bar with HD Icon
         # ===================================================================
         top_bar = tk.Frame(self, bg="#0f172a", padx=16, pady=10)
         top_bar.pack(fill=tk.X, side=tk.TOP)
 
-        # Brand
+        # Brand box with embedded App Icon
         brand_box = tk.Frame(top_bar, bg="#0f172a")
         brand_box.pack(side=tk.LEFT)
 
+        self.header_icon_img = None
+        for candidate_dir in [getattr(sys, "_MEIPASS", None), os.path.dirname(os.path.abspath(__file__))]:
+            if candidate_dir:
+                p = os.path.join(candidate_dir, "app_icon_40.png")
+                if os.path.exists(p):
+                    try:
+                        self.header_icon_img = tk.PhotoImage(file=p)
+                        break
+                    except Exception:
+                        pass
+
+        if self.header_icon_img:
+            icon_lbl = tk.Label(brand_box, image=self.header_icon_img, bg="#0f172a")
+            icon_lbl.pack(side=tk.LEFT, padx=(0, 10))
+
         app_title = tk.Label(
-            brand_box, text=f"⚡ {APP_NAME}", font=("Segoe UI", 13, "bold"),
+            brand_box, text=APP_NAME, font=("Segoe UI", 14, "bold"),
             bg="#0f172a", fg="#38bdf8"
         )
         app_title.pack(side=tk.LEFT)
 
         tagline = tk.Label(
             brand_box, text=" | Android Adopted Storage", font=("Segoe UI", 9),
-            bg="#0f172a", fg="#64748b"
+            bg="#0f172a", fg="#94a3b8"
         )
         tagline.pack(side=tk.LEFT)
 

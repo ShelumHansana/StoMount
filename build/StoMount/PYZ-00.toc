@@ -64,6 +64,14 @@
    'C:\\Users\\Shelum '
    'Hansana\\AppData\\Local\\Programs\\Python\\Python311\\Lib\\csv.py',
    'PYMODULE'),
+  ('ctypes',
+   'C:\\Users\\Shelum '
+   'Hansana\\AppData\\Local\\Programs\\Python\\Python311\\Lib\\ctypes\\__init__.py',
+   'PYMODULE'),
+  ('ctypes._endian',
+   'C:\\Users\\Shelum '
+   'Hansana\\AppData\\Local\\Programs\\Python\\Python311\\Lib\\ctypes\\_endian.py',
+   'PYMODULE'),
   ('dataclasses',
    'C:\\Users\\Shelum '
    'Hansana\\AppData\\Local\\Programs\\Python\\Python311\\Lib\\dataclasses.py',

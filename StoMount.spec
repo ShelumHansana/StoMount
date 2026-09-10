@@ -5,7 +5,7 @@ a = Analysis(
     ['stomount.py'],
     pathex=[],
     binaries=[('platform-tools/*', 'platform-tools')],
-    datas=[('app_icon.ico', '.')],
+    datas=[('app_icon.ico', '.'), ('app_icon*.png', '.')],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},
