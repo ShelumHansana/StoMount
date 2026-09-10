@@ -2,7 +2,7 @@
 ; Creates a standard Windows Setup Wizard (StoMount_Setup.exe)
 
 #define MyAppName "StoMount"
-#define MyAppVersion "1.1.0"
+#define MyAppVersion "1.2.0"
 #define MyAppPublisher "StoMount"
 #define MyAppURL "https://github.com"
 #define MyAppExeName "StoMount.exe"
@@ -39,6 +39,8 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 Source: "dist\StoMount.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "app_icon.ico"; DestDir: "{app}"; Flags: ignoreversion
 Source: "app_icon*.png"; DestDir: "{app}"; Flags: ignoreversion
+Source: "card_icon*.png"; DestDir: "{app}"; Flags: ignoreversion
+Source: "icon_*.png"; DestDir: "{app}"; Flags: ignoreversion
 Source: "platform-tools\*"; DestDir: "{app}\platform-tools"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]

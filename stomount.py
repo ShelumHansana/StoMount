@@ -680,8 +680,11 @@ class StoMountApp(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title(f"{APP_NAME} - Android Adopted Storage Manager (v{APP_VERSION})")
-        self.geometry("860x760")
-        self.minsize(780, 680)
+        self.geometry("1000x800")
+        self.minsize(880, 700)
+
+        # Cache of loaded PhotoImages to prevent Python GC de-allocation
+        self.icons = {}
 
         # Set Window Icon
         for candidate_dir in [getattr(sys, "_MEIPASS", None), os.path.dirname(os.path.abspath(__file__))]:
@@ -694,8 +697,8 @@ class StoMountApp(tk.Tk):
                     except Exception:
                         pass
 
-        # Apply clean theme
-        self.configure(bg="#f8fafc")
+        # Apply HD crisp background
+        self.configure(bg="#f0f5fa")
         self.setup_styles()
 
         # Threading Queue for thread-safe UI updates
@@ -706,10 +709,10 @@ class StoMountApp(tk.Tk):
         self.stored_uuid = self.backend.get_saved_uuid()
 
         # State Variables
-        self.conn_state = tk.StringVar(value="Checking...")
-        self.device_info_str = tk.StringVar(value="Searching for connected Android devices...")
+        self.conn_state = tk.StringVar(value="Not Connected")
+        self.device_info_str = tk.StringVar(value="No devices found via USB or Wi-Fi")
         self.uuid_var = tk.StringVar(value=self.stored_uuid)
-        self.detected_disk_var = tk.StringVar(value="Detecting SD Card disk...")
+        self.detected_disk_var = tk.StringVar(value="Waiting for USB connection...")
         self.operation_in_progress = False
         self.auto_move_active = tk.BooleanVar(value=False)
         self.auto_move_thread = None
@@ -729,6 +732,22 @@ class StoMountApp(tk.Tk):
         # Start auto-refresh timer for device status (every 5 seconds)
         self.after(500, self.schedule_connection_poll)
 
+    def get_ui_icon(self, filename):
+        """Retrieve and cache HD Tkinter PhotoImage from PyInstaller bundle or local path."""
+        if filename in self.icons:
+            return self.icons[filename]
+        for candidate_dir in [getattr(sys, "_MEIPASS", None), os.path.dirname(os.path.abspath(__file__))]:
+            if candidate_dir:
+                p = os.path.join(candidate_dir, filename)
+                if os.path.exists(p):
+                    try:
+                        img = tk.PhotoImage(file=p)
+                        self.icons[filename] = img
+                        return img
+                    except Exception:
+                        pass
+        return None
+
     def setup_styles(self):
         style = ttk.Style(self)
         try:
@@ -736,140 +755,193 @@ class StoMountApp(tk.Tk):
         except Exception:
             pass
 
-        style.configure("Card.TFrame", background="#ffffff", relief="solid", borderwidth=1)
-        style.configure("Primary.TButton", font=("Segoe UI", 10, "bold"), padding=8)
-        style.configure("Secondary.TButton", font=("Segoe UI", 9), padding=5)
+        style.configure("Card.TFrame", background="#ffffff", relief="flat")
+        style.configure("TProgressbar", thickness=6, troughcolor="#e2e8f0", background="#2563eb")
+        style.configure("TCombobox", padding=4)
 
     def create_widgets(self):
         # ===================================================================
         # 1. Top Navigation & Status Bar with HD Icon
         # ===================================================================
-        top_bar = tk.Frame(self, bg="#0f172a", padx=16, pady=10)
+        top_bar = tk.Frame(self, bg="#081a36", padx=20, pady=11)
         top_bar.pack(fill=tk.X, side=tk.TOP)
 
         # Brand box with embedded App Icon
-        brand_box = tk.Frame(top_bar, bg="#0f172a")
+        brand_box = tk.Frame(top_bar, bg="#081a36")
         brand_box.pack(side=tk.LEFT)
 
-        self.header_icon_img = None
-        for candidate_dir in [getattr(sys, "_MEIPASS", None), os.path.dirname(os.path.abspath(__file__))]:
-            if candidate_dir:
-                p = os.path.join(candidate_dir, "app_icon_40.png")
-                if os.path.exists(p):
-                    try:
-                        self.header_icon_img = tk.PhotoImage(file=p)
-                        break
-                    except Exception:
-                        pass
-
-        if self.header_icon_img:
-            icon_lbl = tk.Label(brand_box, image=self.header_icon_img, bg="#0f172a")
+        app_logo_img = self.get_ui_icon("app_icon_40.png")
+        if app_logo_img:
+            icon_lbl = tk.Label(brand_box, image=app_logo_img, bg="#081a36")
             icon_lbl.pack(side=tk.LEFT, padx=(0, 10))
 
         app_title = tk.Label(
-            brand_box, text=APP_NAME, font=("Segoe UI", 14, "bold"),
-            bg="#0f172a", fg="#38bdf8"
+            brand_box, text=APP_NAME, font=("Segoe UI", 16, "bold"),
+            bg="#081a36", fg="#38bdf8"
         )
         app_title.pack(side=tk.LEFT)
 
+        sep_lbl = tk.Label(
+            brand_box, text="|", font=("Segoe UI", 14),
+            bg="#081a36", fg="#334155"
+        )
+        sep_lbl.pack(side=tk.LEFT, padx=10)
+
         tagline = tk.Label(
-            brand_box, text=" | Android Adopted Storage", font=("Segoe UI", 9),
-            bg="#0f172a", fg="#94a3b8"
+            brand_box, text="Android Adopted Storage Manager", font=("Segoe UI", 10),
+            bg="#081a36", fg="#94a3b8"
         )
         tagline.pack(side=tk.LEFT)
 
         # Quick action buttons on top right
         guide_btn = tk.Button(
             top_bar, text="📖 User Guide", font=("Segoe UI", 8, "bold"),
-            bg="#1e293b", fg="#e2e8f0", activebackground="#334155", activeforeground="#ffffff",
-            relief=tk.FLAT, padx=8, pady=3, cursor="hand2", command=self.open_guide
+            bg="#152744", fg="#f1f5f9", activebackground="#223b61", activeforeground="#ffffff",
+            relief=tk.SOLID, bd=1, highlightbackground="#263f68", highlightcolor="#263f68",
+            padx=10, pady=4, cursor="hand2", command=self.open_guide
         )
         guide_btn.pack(side=tk.RIGHT, padx=(6, 0))
 
         adb_cfg_btn = tk.Button(
-            top_bar, text="⚙ ADB Path", font=("Segoe UI", 8),
-            bg="#1e293b", fg="#cbd5e1", activebackground="#334155", activeforeground="#ffffff",
-            relief=tk.FLAT, padx=8, pady=3, cursor="hand2", command=self.open_adb_config_dialog
+            top_bar, text="⚙ ADB Path", font=("Segoe UI", 8, "bold"),
+            bg="#152744", fg="#f1f5f9", activebackground="#223b61", activeforeground="#ffffff",
+            relief=tk.SOLID, bd=1, highlightbackground="#263f68", highlightcolor="#263f68",
+            padx=10, pady=4, cursor="hand2", command=self.open_adb_config_dialog
         )
         adb_cfg_btn.pack(side=tk.RIGHT, padx=(6, 0))
 
         refresh_conn_btn = tk.Button(
-            top_bar, text="↻ Refresh", font=("Segoe UI", 8),
-            bg="#1e293b", fg="#cbd5e1", activebackground="#334155", activeforeground="#ffffff",
-            relief=tk.FLAT, padx=8, pady=3, cursor="hand2", command=self.manual_refresh_connection
+            top_bar, text="↻ Refresh", font=("Segoe UI", 8, "bold"),
+            bg="#152744", fg="#f1f5f9", activebackground="#223b61", activeforeground="#ffffff",
+            relief=tk.SOLID, bd=1, highlightbackground="#263f68", highlightcolor="#263f68",
+            padx=10, pady=4, cursor="hand2", command=self.manual_refresh_connection
         )
         refresh_conn_btn.pack(side=tk.RIGHT)
         ToolTip(refresh_conn_btn, "Immediately re-checks USB connection & SD card status.")
 
         # ===================================================================
-        # 2. Device & SD Card Overview Dashboard Card
+        # Main Workspace Container
         # ===================================================================
-        dash_frame = tk.Frame(self, bg="#1e293b", padx=16, pady=10)
-        dash_frame.pack(fill=tk.X)
+        main_content = tk.Frame(self, bg="#f0f5fa", padx=20, pady=12)
+        main_content.pack(fill=tk.BOTH, expand=True)
 
-        # Connection status badge
-        self.status_badge = tk.Label(
-            dash_frame, text="Checking Device...", font=("Segoe UI", 9, "bold"),
-            bg="#334155", fg="#f8fafc", padx=10, pady=4, relief=tk.FLAT
+        # ===================================================================
+        # 2. Connection Status Card (Pristine White Card)
+        # ===================================================================
+        status_card = tk.Frame(
+            main_content, bg="#ffffff",
+            highlightbackground="#e2e8f0", highlightcolor="#e2e8f0", highlightthickness=1,
+            bd=0, padx=16, pady=8
         )
-        self.status_badge.pack(side=tk.LEFT, padx=(0, 10))
+        status_card.pack(fill=tk.X, pady=(0, 10))
 
-        # Device info & phone model
+        status_left = tk.Frame(status_card, bg="#ffffff")
+        status_left.pack(side=tk.LEFT)
+
+        usb_ico = self.get_ui_icon("icon_usb.png")
+        if usb_ico:
+            tk.Label(status_left, image=usb_ico, bg="#ffffff").pack(side=tk.LEFT, padx=(0, 8))
+
+        self.status_dot_lbl = tk.Label(
+            status_left, text="● Not Connected", font=("Segoe UI", 9, "bold"),
+            bg="#ffffff", fg="#16a34a"
+        )
+        self.status_dot_lbl.pack(side=tk.LEFT, padx=(0, 8))
+
+        tk.Label(status_left, text="|", font=("Segoe UI", 9), bg="#ffffff", fg="#cbd5e1").pack(side=tk.LEFT, padx=(0, 8))
+
         self.device_label = tk.Label(
-            dash_frame, textvariable=self.device_info_str,
-            font=("Segoe UI", 9), bg="#1e293b", fg="#cbd5e1"
+            status_left, textvariable=self.device_info_str,
+            font=("Segoe UI", 9), bg="#ffffff", fg="#64748b"
         )
         self.device_label.pack(side=tk.LEFT)
 
-        # Detected SD Card info indicator
-        self.disk_badge = tk.Label(
-            dash_frame, textvariable=self.detected_disk_var,
-            font=("Segoe UI", 8, "bold"), bg="#0f172a", fg="#38bdf8", padx=8, pady=3, relief=tk.FLAT
+        # Right Pill Badge: e.g. Waiting for USB connection...
+        self.status_pill_frame = tk.Frame(
+            status_card, bg="#e0f2fe",
+            highlightbackground="#bae6fd", highlightcolor="#bae6fd", highlightthickness=1,
+            bd=0, padx=10, pady=3
         )
-        self.disk_badge.pack(side=tk.RIGHT)
+        self.status_pill_frame.pack(side=tk.RIGHT)
+
+        spin_ico = self.get_ui_icon("icon_spinner.png")
+        if spin_ico:
+            self.spin_lbl = tk.Label(self.status_pill_frame, image=spin_ico, bg="#e0f2fe")
+            self.spin_lbl.pack(side=tk.LEFT, padx=(0, 5))
+        else:
+            self.spin_lbl = None
+
+        self.disk_badge = tk.Label(
+            self.status_pill_frame, textvariable=self.detected_disk_var,
+            font=("Segoe UI", 8, "bold"), bg="#e0f2fe", fg="#0369a1"
+        )
+        self.disk_badge.pack(side=tk.LEFT)
 
         # ===================================================================
-        # 3. Main Workspace Container
+        # 3. Adopted SD Card UUID Card
         # ===================================================================
-        main_content = tk.Frame(self, bg="#f8fafc", padx=16, pady=12)
-        main_content.pack(fill=tk.BOTH, expand=True)
-
-        # SD Card UUID bar
-        uuid_card = tk.Frame(main_content, bg="#ffffff", relief=tk.SOLID, bd=1, padx=14, pady=8)
+        uuid_card = tk.Frame(
+            main_content, bg="#ffffff",
+            highlightbackground="#e2e8f0", highlightcolor="#e2e8f0", highlightthickness=1,
+            bd=0, padx=16, pady=8
+        )
         uuid_card.pack(fill=tk.X, pady=(0, 10))
 
-        tk.Label(uuid_card, text="Adopted SD Card UUID:", font=("Segoe UI", 9, "bold"), bg="#ffffff", fg="#334155").pack(side=tk.LEFT, padx=(0, 6))
+        tk.Label(
+            uuid_card, text="Adopted SD Card UUID:", font=("Segoe UI", 9, "bold"),
+            bg="#ffffff", fg="#0f172a"
+        ).pack(side=tk.LEFT, padx=(0, 8))
 
-        self.uuid_entry = ttk.Entry(uuid_card, textvariable=self.uuid_var, width=34, font=("Consolas", 10))
-        self.uuid_entry.pack(side=tk.LEFT, padx=(0, 8))
+        self.uuid_entry = tk.Entry(
+            uuid_card, textvariable=self.uuid_var, width=38,
+            font=("Segoe UI", 9), bg="#ffffff", relief=tk.SOLID, bd=1,
+            highlightthickness=0
+        )
+        self.uuid_entry.pack(side=tk.LEFT, padx=(0, 8), ipady=3)
         self.uuid_var.trace_add("write", lambda *args: self.on_uuid_changed())
 
-        detect_btn = ttk.Button(uuid_card, text="🔍 Detect UUID", command=self.detect_sd_uuid_thread)
-        detect_btn.pack(side=tk.LEFT, padx=(0, 4))
+        detect_btn = tk.Button(
+            uuid_card, text="🔍 Detect UUID", font=("Segoe UI", 8, "bold"),
+            bg="#e0f2fe", fg="#0284c7", activebackground="#bae6fd", activeforeground="#0369a1",
+            relief=tk.SOLID, bd=1, highlightbackground="#bae6fd", highlightcolor="#bae6fd",
+            padx=10, pady=3, cursor="hand2", command=self.detect_sd_uuid_thread
+        )
+        detect_btn.pack(side=tk.LEFT, padx=(0, 6))
         ToolTip(detect_btn, "Inspects 'sm list-volumes' to detect any currently adopted SD card UUID.")
 
-        save_uuid_btn = ttk.Button(uuid_card, text="💾 Save UUID", command=self.save_current_uuid)
+        save_uuid_btn = tk.Button(
+            uuid_card, text="💾 Save UUID", font=("Segoe UI", 8, "bold"),
+            bg="#e0f2fe", fg="#0284c7", activebackground="#bae6fd", activeforeground="#0369a1",
+            relief=tk.SOLID, bd=1, highlightbackground="#bae6fd", highlightcolor="#bae6fd",
+            padx=10, pady=3, cursor="hand2", command=self.save_current_uuid
+        )
         save_uuid_btn.pack(side=tk.LEFT, padx=(0, 8))
         ToolTip(save_uuid_btn, "Save this UUID permanently so you don't have to detect it again.")
 
         self.uuid_status_pill = tk.Label(
-            uuid_card, text="Not detected yet", font=("Segoe UI", 8, "bold"),
-            bg="#fef3c7", fg="#b45309", padx=8, pady=2
+            uuid_card, text="⚠️ No UUID Detected", font=("Segoe UI", 8, "bold"),
+            bg="#fef3c7", fg="#b45309", relief=tk.SOLID, bd=1,
+            highlightbackground="#fde68a", highlightcolor="#fde68a",
+            padx=10, pady=3
         )
         self.uuid_status_pill.pack(side=tk.RIGHT)
 
         # ===================================================================
-        # 4. Primary Guided Actions (Front and Center)
+        # 4. Primary Guided Workflow (Side-by-Side Steps 1 & 2)
         # ===================================================================
-        actions_header = tk.Frame(main_content, bg="#f8fafc")
-        actions_header.pack(fill=tk.X, pady=(0, 6))
+        actions_header = tk.Frame(main_content, bg="#f0f5fa")
+        actions_header.pack(fill=tk.X, pady=(2, 6))
+
+        wf_ico = self.get_ui_icon("icon_workflow.png")
+        if wf_ico:
+            tk.Label(actions_header, image=wf_ico, bg="#f0f5fa").pack(side=tk.LEFT, padx=(0, 6))
 
         tk.Label(
-            actions_header, text="PRIMARY WORKFLOW (FOLLOW STEPS 1 & 2)",
-            font=("Segoe UI", 10, "bold"), bg="#f8fafc", fg="#475569"
+            actions_header, text="Primary Workflow (Follow Steps 1 & 2)",
+            font=("Segoe UI", 10, "bold"), bg="#f0f5fa", fg="#1e293b"
         ).pack(side=tk.LEFT)
 
-        actions_grid = tk.Frame(main_content, bg="#f8fafc")
+        actions_grid = tk.Frame(main_content, bg="#f0f5fa")
         actions_grid.pack(fill=tk.X, pady=(0, 10))
         actions_grid.columnconfigure(0, weight=1, uniform="col")
         actions_grid.columnconfigure(1, weight=1, uniform="col")
@@ -877,37 +949,63 @@ class StoMountApp(tk.Tk):
         # -----------------------------
         # STEP 1 CARD
         # -----------------------------
-        card1 = tk.Frame(actions_grid, bg="#ffffff", relief=tk.SOLID, bd=1, padx=14, pady=12)
+        card1 = tk.Frame(
+            actions_grid, bg="#ffffff",
+            highlightbackground="#e2e8f0", highlightcolor="#e2e8f0", highlightthickness=1,
+            bd=0, padx=16, pady=12
+        )
         card1.grid(row=0, column=0, sticky="nsew", padx=(0, 6))
 
         c1_top = tk.Frame(card1, bg="#ffffff")
-        c1_top.pack(fill=tk.X)
-
-        tk.Label(c1_top, text="STEP 1", font=("Segoe UI", 8, "bold"), bg="#dbeafe", fg="#1d4ed8", padx=6, pady=1).pack(side=tk.LEFT)
-        self.c1_status_pill = tk.Label(c1_top, text="Start Here", font=("Segoe UI", 8, "bold"), bg="#f1f5f9", fg="#475569", padx=6, pady=1)
-        self.c1_status_pill.pack(side=tk.RIGHT)
+        c1_top.pack(fill=tk.X, pady=(0, 8))
 
         tk.Label(
-            card1, text="Mount SD as Internal Storage",
-            font=("Segoe UI", 11, "bold"), bg="#ffffff", fg="#0f172a"
-        ).pack(anchor="w", pady=(6, 2))
+            c1_top, text="STEP 1", font=("Segoe UI", 8, "bold"),
+            bg="#2563eb", fg="#ffffff", padx=8, pady=2
+        ).pack(side=tk.LEFT)
 
-        c1_desc = tk.Label(
-            card1,
-            text="Formats the removable microSD card into encrypted adopted storage ('sm partition private').\n⚠️ Erases all data on the card!",
-            font=("Segoe UI", 8), bg="#ffffff", fg="#64748b", justify=tk.LEFT, wraplength=350
+        self.c1_status_pill = tk.Label(
+            c1_top, text="▶ Start Here", font=("Segoe UI", 8, "bold"),
+            bg="#eff6ff", fg="#2563eb", padx=8, pady=2,
+            relief=tk.SOLID, bd=1, highlightbackground="#dbeafe", highlightcolor="#dbeafe"
         )
-        c1_desc.pack(anchor="w", pady=(0, 10))
+        self.c1_status_pill.pack(side=tk.RIGHT)
+
+        c1_body = tk.Frame(card1, bg="#ffffff")
+        c1_body.pack(fill=tk.X, pady=(0, 10))
+
+        sd_ico = self.get_ui_icon("card_icon_sd.png")
+        if sd_ico:
+            tk.Label(c1_body, image=sd_ico, bg="#ffffff").pack(side=tk.LEFT, padx=(0, 12))
+
+        c1_txt = tk.Frame(c1_body, bg="#ffffff")
+        c1_txt.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
+        tk.Label(
+            c1_txt, text="Mount SD as Internal Storage",
+            font=("Segoe UI", 11, "bold"), bg="#ffffff", fg="#0f172a"
+        ).pack(anchor="w", pady=(0, 2))
+
+        tk.Label(
+            c1_txt,
+            text='Formats the removable microSD card into\nencrypted adopted storage ("sdm partition private").',
+            font=("Segoe UI", 8), bg="#ffffff", fg="#64748b", justify=tk.LEFT
+        ).pack(anchor="w")
+
+        tk.Label(
+            c1_txt,
+            text="⚠️ Erases all data on the card!",
+            font=("Segoe UI", 8, "bold"), bg="#ffffff", fg="#d97706"
+        ).pack(anchor="w", pady=(2, 0))
 
         self.mount_btn = tk.Button(
             card1,
             text="⚡ Mount SD Card as Internal Storage",
-            font=("Segoe UI", 10, "bold"),
+            font=("Segoe UI", 9, "bold"),
             bg="#2563eb", fg="#ffffff",
             activebackground="#1d4ed8", activeforeground="#ffffff",
             disabledforeground="#94a3b8",
-            relief=tk.FLAT, padx=12, pady=8,
-            cursor="hand2",
+            relief=tk.FLAT, pady=8, cursor="hand2",
             command=self.on_mount_sd_clicked
         )
         self.mount_btn.pack(fill=tk.X)
@@ -915,87 +1013,133 @@ class StoMountApp(tk.Tk):
         # -----------------------------
         # STEP 2 CARD
         # -----------------------------
-        card2 = tk.Frame(actions_grid, bg="#ffffff", relief=tk.SOLID, bd=1, padx=14, pady=12)
+        card2 = tk.Frame(
+            actions_grid, bg="#ffffff",
+            highlightbackground="#e2e8f0", highlightcolor="#e2e8f0", highlightthickness=1,
+            bd=0, padx=16, pady=12
+        )
         card2.grid(row=0, column=1, sticky="nsew", padx=(6, 0))
 
         c2_top = tk.Frame(card2, bg="#ffffff")
-        c2_top.pack(fill=tk.X)
-
-        tk.Label(c2_top, text="STEP 2", font=("Segoe UI", 8, "bold"), bg="#dcfce7", fg="#15803d", padx=6, pady=1).pack(side=tk.LEFT)
-        self.c2_status_pill = tk.Label(c2_top, text="Requires Step 1", font=("Segoe UI", 8, "bold"), bg="#fee2e2", fg="#991b1b", padx=6, pady=1)
-        self.c2_status_pill.pack(side=tk.RIGHT)
+        c2_top.pack(fill=tk.X, pady=(0, 8))
 
         tk.Label(
-            card2, text="Move All Apps & Content to SD",
-            font=("Segoe UI", 11, "bold"), bg="#ffffff", fg="#0f172a"
-        ).pack(anchor="w", pady=(6, 2))
+            c2_top, text="STEP 2", font=("Segoe UI", 8, "bold"),
+            bg="#16a34a", fg="#ffffff", padx=8, pady=2
+        ).pack(side=tk.LEFT)
 
-        c2_desc = tk.Label(
-            card2,
-            text="Batch moves all installed 3rd-party apps to the adopted SD card, then migrates primary storage for photos, downloads, and media.",
-            font=("Segoe UI", 8), bg="#ffffff", fg="#64748b", justify=tk.LEFT, wraplength=350
+        self.c2_status_pill = tk.Label(
+            c2_top, text="❗️ Requires Step 1", font=("Segoe UI", 8, "bold"),
+            bg="#fee2e2", fg="#dc2626", padx=8, pady=2,
+            relief=tk.SOLID, bd=1, highlightbackground="#fecaca", highlightcolor="#fecaca"
         )
-        c2_desc.pack(anchor="w", pady=(0, 10))
+        self.c2_status_pill.pack(side=tk.RIGHT)
+
+        c2_body = tk.Frame(card2, bg="#ffffff")
+        c2_body.pack(fill=tk.X, pady=(0, 10))
+
+        apps_ico = self.get_ui_icon("card_icon_apps.png")
+        if apps_ico:
+            tk.Label(c2_body, image=apps_ico, bg="#ffffff").pack(side=tk.LEFT, padx=(0, 12))
+
+        c2_txt = tk.Frame(c2_body, bg="#ffffff")
+        c2_txt.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
+        tk.Label(
+            c2_txt, text="Move All Apps & Content to SD",
+            font=("Segoe UI", 11, "bold"), bg="#ffffff", fg="#0f172a"
+        ).pack(anchor="w", pady=(0, 2))
+
+        tk.Label(
+            c2_txt,
+            text="Batch moves all installed 3rd-party apps to the\nadopted SD card, then migrates primary storage\nfor photos, downloads, and media.",
+            font=("Segoe UI", 8), bg="#ffffff", fg="#64748b", justify=tk.LEFT
+        ).pack(anchor="w")
 
         self.move_all_btn = tk.Button(
             card2,
             text="🚀 Move All Apps & Content to SD Card",
-            font=("Segoe UI", 10, "bold"),
-            bg="#059669", fg="#ffffff",
+            font=("Segoe UI", 9, "bold"),
+            bg="#e2e8f0", fg="#94a3b8",
             activebackground="#047857", activeforeground="#ffffff",
             disabledforeground="#94a3b8",
-            relief=tk.FLAT, padx=12, pady=8,
-            cursor="hand2",
+            relief=tk.FLAT, pady=8, cursor="hand2",
+            state=tk.DISABLED,
             command=self.on_move_all_clicked
         )
         self.move_all_btn.pack(fill=tk.X)
         self.move_all_tooltip = ToolTip(self.move_all_btn, "Requires an adopted SD Card UUID to be detected first.")
 
         # ===================================================================
-        # 5. Additional Storage Controls (Single App & Auto-Move)
+        # 5. Additional Storage Controls Card
         # ===================================================================
-        sec_card = tk.LabelFrame(
-            main_content, text="  Additional Storage Controls  ",
-            font=("Segoe UI", 9, "bold"), bg="#ffffff", fg="#334155", padx=14, pady=10
+        sec_card = tk.Frame(
+            main_content, bg="#ffffff",
+            highlightbackground="#e2e8f0", highlightcolor="#e2e8f0", highlightthickness=1,
+            bd=0, padx=16, pady=10
         )
         sec_card.pack(fill=tk.X, pady=(0, 10))
 
-        # Row 1: Move Single App with Search Filter
+        sec_header = tk.Frame(sec_card, bg="#ffffff")
+        sec_header.pack(fill=tk.X, pady=(0, 6))
+
+        gear_ico = self.get_ui_icon("icon_settings.png")
+        if gear_ico:
+            tk.Label(sec_header, image=gear_ico, bg="#ffffff").pack(side=tk.LEFT, padx=(0, 6))
+
+        tk.Label(
+            sec_header, text="Additional Storage Controls",
+            font=("Segoe UI", 9, "bold"), bg="#ffffff", fg="#1e293b"
+        ).pack(side=tk.LEFT)
+
+        # Row 1: Move Single App with Combobox & Action Buttons
         row1 = tk.Frame(sec_card, bg="#ffffff")
         row1.pack(fill=tk.X, pady=(0, 6))
 
-        tk.Label(row1, text="Move Single App:", font=("Segoe UI", 9, "bold"), bg="#ffffff", fg="#334155").pack(side=tk.LEFT, padx=(0, 6))
+        tk.Label(
+            row1, text="Move Single App:", font=("Segoe UI", 9, "bold"),
+            bg="#ffffff", fg="#1e293b"
+        ).pack(side=tk.LEFT, padx=(0, 8))
 
-        # Search filter
+        # Search filter entry
         self.app_filter_var = tk.StringVar()
         self.app_filter_var.trace_add("write", self.filter_app_list)
-        self.filter_entry = ttk.Entry(row1, textvariable=self.app_filter_var, width=16)
-        self.filter_entry.pack(side=tk.LEFT, padx=(0, 6))
-        ToolTip(self.filter_entry, "Filter app list by name (e.g., whatsapp, music)")
 
-        self.single_app_combo = ttk.Combobox(row1, width=32, state="readonly")
-        self.single_app_combo.pack(side=tk.LEFT, padx=(0, 6))
+        self.single_app_combo = ttk.Combobox(row1, width=34, state="readonly")
+        self.single_app_combo.pack(side=tk.LEFT, padx=(0, 8))
 
-        self.refresh_apps_btn = ttk.Button(row1, text="↻ Refresh List", command=self.refresh_app_list_thread)
+        self.refresh_apps_btn = tk.Button(
+            row1, text="↻ Refresh List", font=("Segoe UI", 8, "bold"),
+            bg="#eff6ff", fg="#0284c7", activebackground="#dbeafe", activeforeground="#0369a1",
+            relief=tk.SOLID, bd=1, highlightbackground="#bae6fd", highlightcolor="#bae6fd",
+            padx=10, pady=3, cursor="hand2", command=self.refresh_app_list_thread
+        )
         self.refresh_apps_btn.pack(side=tk.LEFT, padx=(0, 6))
 
-        self.move_single_btn = ttk.Button(row1, text="Move to SD", command=self.on_move_single_app_clicked)
-        self.move_single_btn.pack(side=tk.LEFT, padx=(0, 4))
+        self.move_single_btn = tk.Button(
+            row1, text="➔ Move to SD", font=("Segoe UI", 8, "bold"),
+            bg="#eff6ff", fg="#0284c7", activebackground="#dbeafe", activeforeground="#0369a1",
+            relief=tk.SOLID, bd=1, highlightbackground="#bae6fd", highlightcolor="#bae6fd",
+            padx=10, pady=3, cursor="hand2", command=self.on_move_single_app_clicked
+        )
+        self.move_single_btn.pack(side=tk.LEFT, padx=(0, 6))
         ToolTip(self.move_single_btn, "Moves the selected app to the adopted SD card.")
 
-        self.move_single_internal_btn = ttk.Button(row1, text="Move to Internal", command=self.on_move_single_internal_clicked)
+        self.move_single_internal_btn = tk.Button(
+            row1, text="⬅ Move to Internal", font=("Segoe UI", 8, "bold"),
+            bg="#eff6ff", fg="#0284c7", activebackground="#dbeafe", activeforeground="#0369a1",
+            relief=tk.SOLID, bd=1, highlightbackground="#bae6fd", highlightcolor="#bae6fd",
+            padx=10, pady=3, cursor="hand2", command=self.on_move_single_internal_clicked
+        )
         self.move_single_internal_btn.pack(side=tk.LEFT)
         ToolTip(self.move_single_internal_btn, "Reverts the selected app back to phone internal storage.")
 
         self.apps_count_lbl = tk.Label(row1, text="", font=("Segoe UI", 8), bg="#ffffff", fg="#64748b")
         self.apps_count_lbl.pack(side=tk.RIGHT)
 
-        # Separator line
-        ttk.Separator(sec_card, orient=tk.HORIZONTAL).pack(fill=tk.X, pady=6)
-
-        # Row 2: Auto-move new installs
+        # Row 2: Auto-move newly installed apps
         row2 = tk.Frame(sec_card, bg="#ffffff")
-        row2.pack(fill=tk.X)
+        row2.pack(fill=tk.X, pady=(4, 0))
 
         self.auto_move_chk = ttk.Checkbutton(
             row2,
@@ -1006,45 +1150,54 @@ class StoMountApp(tk.Tk):
         self.auto_move_chk.pack(side=tk.LEFT)
 
         self.auto_move_indicator = tk.Label(
-            row2, text="OFF", font=("Segoe UI", 8, "bold"),
-            bg="#f1f5f9", fg="#64748b", padx=8, pady=2
+            row2, text="ⓘ OFF", font=("Segoe UI", 8, "bold"),
+            bg="#f1f5f9", fg="#64748b", padx=8, pady=2,
+            relief=tk.SOLID, bd=1, highlightbackground="#e2e8f0", highlightcolor="#e2e8f0"
         )
         self.auto_move_indicator.pack(side=tk.LEFT, padx=(10, 0))
 
         # ===================================================================
-        # 6. Revert & Reset to Original Storage
+        # 6. Revert & Reset to Original Storage Card (Red Accented Card)
         # ===================================================================
-        revert_card = tk.LabelFrame(
-            main_content, text="  ↩️ Revert & Reset Storage (Restore to Original Situation)  ",
-            font=("Segoe UI", 9, "bold"), bg="#ffffff", fg="#b91c1c", padx=14, pady=10
+        revert_card = tk.Frame(
+            main_content, bg="#ffffff",
+            highlightbackground="#fca5a5", highlightcolor="#fca5a5", highlightthickness=1,
+            bd=0, padx=16, pady=10
         )
         revert_card.pack(fill=tk.X, pady=(0, 10))
 
-        revert_desc = tk.Label(
+        tk.Label(
+            revert_card,
+            text="🔄 Revert & Reset Storage (Restore to Original Situation)",
+            font=("Segoe UI", 9, "bold"), bg="#ffffff", fg="#dc2626"
+        ).pack(anchor="w", pady=(0, 2))
+
+        tk.Label(
             revert_card,
             text="Need to revert back to default? Move apps and media back to internal storage, and restore the SD card as standard portable storage (FAT32/exFAT).",
             font=("Segoe UI", 8), bg="#ffffff", fg="#64748b", justify=tk.LEFT
-        )
-        revert_desc.pack(anchor="w", pady=(0, 8))
+        ).pack(anchor="w", pady=(0, 8))
 
         revert_btn_row = tk.Frame(revert_card, bg="#ffffff")
         revert_btn_row.pack(fill=tk.X)
 
         self.revert_apps_btn = tk.Button(
             revert_btn_row, text="📥 Move All Apps Back to Internal",
-            font=("Segoe UI", 9, "bold"), bg="#f8fafc", fg="#1e293b",
-            activebackground="#e2e8f0", activeforeground="#0f172a",
-            relief=tk.SOLID, bd=1, padx=10, pady=5, cursor="hand2",
+            font=("Segoe UI", 8, "bold"), bg="#ffffff", fg="#1e293b",
+            activebackground="#f1f5f9", activeforeground="#0f172a",
+            relief=tk.SOLID, bd=1, highlightbackground="#cbd5e1", highlightcolor="#cbd5e1",
+            padx=10, pady=4, cursor="hand2",
             command=self.on_revert_all_apps_clicked
         )
         self.revert_apps_btn.pack(side=tk.LEFT, padx=(0, 8))
         ToolTip(self.revert_apps_btn, "Moves all 3rd-party apps and primary media back to phone internal storage.")
 
         self.revert_sd_btn = tk.Button(
-            revert_btn_row, text="🔄 Format SD as Standard Portable",
-            font=("Segoe UI", 9, "bold"), bg="#f8fafc", fg="#b91c1c",
+            revert_btn_row, text="💾 Format SD as Standard Portable",
+            font=("Segoe UI", 8, "bold"), bg="#ffffff", fg="#dc2626",
             activebackground="#fee2e2", activeforeground="#991b1b",
-            relief=tk.SOLID, bd=1, padx=10, pady=5, cursor="hand2",
+            relief=tk.SOLID, bd=1, highlightbackground="#fca5a5", highlightcolor="#fca5a5",
+            padx=10, pady=4, cursor="hand2",
             command=self.on_format_sd_public_clicked
         )
         self.revert_sd_btn.pack(side=tk.LEFT, padx=(0, 8))
@@ -1052,29 +1205,29 @@ class StoMountApp(tk.Tk):
 
         self.full_reset_btn = tk.Button(
             revert_btn_row, text="⚡ Complete Storage Reset Wizard",
-            font=("Segoe UI", 9, "bold"), bg="#fee2e2", fg="#991b1b",
-            activebackground="#fecaca", activeforeground="#7f1d1d",
-            relief=tk.SOLID, bd=1, padx=12, pady=5, cursor="hand2",
+            font=("Segoe UI", 8, "bold"), bg="#ef4444", fg="#ffffff",
+            activebackground="#dc2626", activeforeground="#ffffff",
+            relief=tk.FLAT, padx=14, pady=5, cursor="hand2",
             command=self.on_full_reset_wizard_clicked
         )
         self.full_reset_btn.pack(side=tk.RIGHT)
         ToolTip(self.full_reset_btn, "Automated 1-click restore: moves apps and media back, formats SD as portable, and clears StoMount session.")
 
         # ===================================================================
-        # 7. Progress & Status Banner
+        # 7. Progress & Status Row
         # ===================================================================
-        self.progress_frame = tk.Frame(main_content, bg="#f8fafc")
-        self.progress_frame.pack(fill=tk.X, pady=(0, 6))
+        self.progress_frame = tk.Frame(main_content, bg="#f0f5fa")
+        self.progress_frame.pack(fill=tk.X, pady=(0, 4))
 
-        prog_top = tk.Frame(self.progress_frame, bg="#f8fafc")
+        prog_top = tk.Frame(self.progress_frame, bg="#f0f5fa")
         prog_top.pack(fill=tk.X)
 
         self.progress_lbl = tk.Label(
             prog_top,
-            text="Ready",
+            text="✓ Ready",
             font=("Segoe UI", 9, "bold"),
-            bg="#f8fafc",
-            fg="#0f172a"
+            bg="#f0f5fa",
+            fg="#16a34a"
         )
         self.progress_lbl.pack(side=tk.LEFT)
 
@@ -1082,7 +1235,7 @@ class StoMountApp(tk.Tk):
             prog_top,
             text="",
             font=("Segoe UI", 8, "bold"),
-            bg="#f8fafc",
+            bg="#f0f5fa",
             fg="#475569"
         )
         self.progress_pct_lbl.pack(side=tk.RIGHT)
@@ -1091,40 +1244,53 @@ class StoMountApp(tk.Tk):
         self.progress_bar.pack(fill=tk.X, pady=(2, 0))
 
         # ===================================================================
-        # 7. Real-Time ADB Console / Log Panel
+        # 8. Real-Time ADB Console / Log Panel
         # ===================================================================
-        log_header = tk.Frame(main_content, bg="#f8fafc")
-        log_header.pack(fill=tk.X, pady=(4, 2))
+        log_header = tk.Frame(main_content, bg="#f0f5fa")
+        log_header.pack(fill=tk.X, pady=(4, 4))
 
-        tk.Label(log_header, text="ADB Command Log & Real-Time Console", font=("Segoe UI", 9, "bold"), bg="#f8fafc", fg="#475569").pack(side=tk.LEFT)
+        con_ico = self.get_ui_icon("icon_console.png")
+        if con_ico:
+            tk.Label(log_header, image=con_ico, bg="#f0f5fa").pack(side=tk.LEFT, padx=(0, 6))
+
+        tk.Label(
+            log_header, text="ADB Command Log & Real-Time Console",
+            font=("Segoe UI", 9, "bold"), bg="#f0f5fa", fg="#334155"
+        ).pack(side=tk.LEFT)
 
         copy_btn = tk.Button(
             log_header, text="📋 Copy All", font=("Segoe UI", 8),
-            bg="#e2e8f0", fg="#334155", relief=tk.FLAT, padx=6, pady=1,
-            cursor="hand2", command=self.copy_log_to_clipboard
+            bg="#f1f5f9", fg="#334155", activebackground="#e2e8f0",
+            relief=tk.SOLID, bd=1, highlightbackground="#cbd5e1", highlightcolor="#cbd5e1",
+            padx=8, pady=2, cursor="hand2", command=self.copy_log_to_clipboard
         )
-        copy_btn.pack(side=tk.RIGHT, padx=(4, 0))
+        copy_btn.pack(side=tk.RIGHT, padx=(6, 0))
 
         clear_btn = tk.Button(
-            log_header, text="Clear Log", font=("Segoe UI", 8),
-            bg="#e2e8f0", fg="#334155", relief=tk.FLAT, padx=6, pady=1,
-            cursor="hand2", command=self.clear_log
+            log_header, text="🗑 Clear Log", font=("Segoe UI", 8),
+            bg="#f1f5f9", fg="#334155", activebackground="#e2e8f0",
+            relief=tk.SOLID, bd=1, highlightbackground="#cbd5e1", highlightcolor="#cbd5e1",
+            padx=8, pady=2, cursor="hand2", command=self.clear_log
         )
         clear_btn.pack(side=tk.RIGHT)
 
-        log_container = tk.Frame(main_content, bg="#0f172a", relief=tk.SOLID, bd=1)
+        log_container = tk.Frame(
+            main_content, bg="#0b162c",
+            highlightbackground="#1e293b", highlightcolor="#1e293b", highlightthickness=1,
+            bd=0
+        )
         log_container.pack(fill=tk.BOTH, expand=True)
 
         self.log_text = tk.Text(
             log_container,
-            bg="#0f172a",
+            bg="#0b162c",
             fg="#e2e8f0",
             insertbackground="#ffffff",
             font=("Consolas", 9),
             wrap=tk.WORD,
-            padx=8,
+            padx=10,
             pady=8,
-            height=9
+            height=7
         )
         self.log_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
@@ -1192,19 +1358,19 @@ class StoMountApp(tk.Tk):
                     self.progress_bar.config(value=curr)
                     pct = int((curr / total) * 100) if total else 0
                     self.progress_pct_lbl.config(text=f"{pct}%")
-                    self.progress_lbl.config(text=text)
+                    self.progress_lbl.config(text=text, fg="#0f172a")
                 elif event_type == "PROGRESS_INDETERMINATE":
                     text = data
                     self.progress_bar.config(mode="indeterminate")
                     self.progress_bar.start(15)
                     self.progress_pct_lbl.config(text="Working...")
-                    self.progress_lbl.config(text=text)
+                    self.progress_lbl.config(text=text, fg="#0284c7")
                 elif event_type == "PROGRESS_STOP":
                     text = data
                     self.progress_bar.stop()
                     self.progress_bar.config(mode="determinate", value=0)
                     self.progress_pct_lbl.config(text="")
-                    self.progress_lbl.config(text=text or "Ready")
+                    self.progress_lbl.config(text=text or "✓ Ready", fg="#16a34a")
                 elif event_type == "SET_BUSY":
                     busy = data
                     self.set_busy_state(busy)
@@ -1238,19 +1404,37 @@ class StoMountApp(tk.Tk):
         uuid_val = self.uuid_var.get().strip()
         if not self.operation_in_progress:
             if uuid_val:
-                self.move_all_btn.config(state=tk.NORMAL, bg="#059669")
+                self.move_all_btn.config(state=tk.NORMAL, bg="#059669", fg="#ffffff")
                 self.move_all_tooltip.set_text("Move all 3rd-party apps and primary storage to SD card: " + uuid_val)
-                self.uuid_status_pill.config(text="✓ Adopted UUID Set", bg="#dcfce7", fg="#15803d")
-                self.c1_status_pill.config(text="✓ SD Card Adopted", bg="#dcfce7", fg="#15803d")
-                self.c2_status_pill.config(text="Ready to Migrate", bg="#dbeafe", fg="#1d4ed8")
+                self.uuid_status_pill.config(
+                    text="✓ Adopted UUID Set", bg="#dcfce7", fg="#15803d",
+                    highlightbackground="#bbf7d0", highlightcolor="#bbf7d0"
+                )
+                self.c1_status_pill.config(
+                    text="✓ SD Card Adopted", bg="#dcfce7", fg="#15803d",
+                    highlightbackground="#bbf7d0", highlightcolor="#bbf7d0"
+                )
+                self.c2_status_pill.config(
+                    text="Ready to Migrate", bg="#dbeafe", fg="#1d4ed8",
+                    highlightbackground="#bfdbfe", highlightcolor="#bfdbfe"
+                )
             else:
-                self.move_all_btn.config(state=tk.DISABLED, bg="#e2e8f0")
+                self.move_all_btn.config(state=tk.DISABLED, bg="#e2e8f0", fg="#94a3b8")
                 self.move_all_tooltip.set_text("Requires an adopted SD card UUID. Complete Step 1 or enter a valid UUID.")
-                self.uuid_status_pill.config(text="No UUID Detected", bg="#fef3c7", fg="#b45309")
-                self.c1_status_pill.config(text="Start Here", bg="#f1f5f9", fg="#475569")
-                self.c2_status_pill.config(text="Requires Step 1", bg="#fee2e2", fg="#991b1b")
+                self.uuid_status_pill.config(
+                    text="⚠️ No UUID Detected", bg="#fef3c7", fg="#b45309",
+                    highlightbackground="#fde68a", highlightcolor="#fde68a"
+                )
+                self.c1_status_pill.config(
+                    text="▶ Start Here", bg="#eff6ff", fg="#2563eb",
+                    highlightbackground="#dbeafe", highlightcolor="#dbeafe"
+                )
+                self.c2_status_pill.config(
+                    text="❗️ Requires Step 1", bg="#fee2e2", fg="#dc2626",
+                    highlightbackground="#fecaca", highlightcolor="#fecaca"
+                )
         else:
-            self.move_all_btn.config(state=tk.DISABLED, bg="#e2e8f0")
+            self.move_all_btn.config(state=tk.DISABLED, bg="#e2e8f0", fg="#94a3b8")
 
     def filter_app_list(self, *args):
         query = self.app_filter_var.get().strip().lower()
@@ -1283,7 +1467,7 @@ class StoMountApp(tk.Tk):
         self.after(5000, self.schedule_connection_poll)
 
     def manual_refresh_connection(self):
-        self.status_badge.config(text="Checking...", bg="#334155", fg="#ffffff")
+        self.status_dot_lbl.config(text="● Checking...", fg="#0284c7")
         threading.Thread(target=self.poll_connection_worker, daemon=True).start()
 
     def poll_connection_worker(self):
@@ -1298,25 +1482,38 @@ class StoMountApp(tk.Tk):
         self.device_info_str.set(info)
 
         if state == "Connected":
-            self.status_badge.config(text="● Connected", bg="#059669", fg="#ffffff")
+            self.status_dot_lbl.config(text="● Connected", fg="#16a34a")
             if disks:
                 self.detected_disk_var.set(f"SD Card: {', '.join(disks)}")
-                self.disk_badge.config(bg="#0284c7", fg="#ffffff")
+                self.status_pill_frame.config(bg="#dcfce7", highlightbackground="#bbf7d0", highlightcolor="#bbf7d0")
+                self.disk_badge.config(bg="#dcfce7", fg="#15803d")
             else:
                 self.detected_disk_var.set("No SD card disk detected")
-                self.disk_badge.config(bg="#475569", fg="#cbd5e1")
+                self.status_pill_frame.config(bg="#f1f5f9", highlightbackground="#e2e8f0", highlightcolor="#e2e8f0")
+                self.disk_badge.config(bg="#f1f5f9", fg="#64748b")
+            if self.spin_lbl:
+                self.spin_lbl.pack_forget()
         elif state == "Unauthorized":
-            self.status_badge.config(text="▲ Unauthorized", bg="#d97706", fg="#ffffff")
+            self.status_dot_lbl.config(text="● Unauthorized", fg="#d97706")
             self.detected_disk_var.set("Unlock phone to detect SD")
-            self.disk_badge.config(bg="#d97706", fg="#ffffff")
+            self.status_pill_frame.config(bg="#fef3c7", highlightbackground="#fde68a", highlightcolor="#fde68a")
+            self.disk_badge.config(bg="#fef3c7", fg="#b45309")
+            if self.spin_lbl:
+                self.spin_lbl.pack_forget()
         elif state == "Offline":
-            self.status_badge.config(text="■ Offline", bg="#dc2626", fg="#ffffff")
+            self.status_dot_lbl.config(text="● Offline", fg="#dc2626")
             self.detected_disk_var.set("Device offline")
-            self.disk_badge.config(bg="#dc2626", fg="#ffffff")
+            self.status_pill_frame.config(bg="#fee2e2", highlightbackground="#fecaca", highlightcolor="#fecaca")
+            self.disk_badge.config(bg="#fee2e2", fg="#dc2626")
+            if self.spin_lbl:
+                self.spin_lbl.pack_forget()
         else:
-            self.status_badge.config(text="✕ Not Connected", bg="#475569", fg="#ffffff")
+            self.status_dot_lbl.config(text="● Not Connected", fg="#16a34a")
             self.detected_disk_var.set("Waiting for USB connection...")
-            self.disk_badge.config(bg="#334155", fg="#94a3b8")
+            self.status_pill_frame.config(bg="#e0f2fe", highlightbackground="#bae6fd", highlightcolor="#bae6fd")
+            self.disk_badge.config(bg="#e0f2fe", fg="#0369a1")
+            if self.spin_lbl:
+                self.spin_lbl.pack(side=tk.LEFT, padx=(0, 5))
 
     # -----------------------------------------------------------------------
     # ADB Configuration Dialog
@@ -1688,13 +1885,19 @@ class StoMountApp(tk.Tk):
                 self.auto_move_active.set(False)
                 return
 
-            self.auto_move_indicator.config(text="ON (Active)", bg="#dcfce7", fg="#15803d")
+            self.auto_move_indicator.config(
+                text="ⓘ ACTIVE", bg="#dcfce7", fg="#15803d",
+                highlightbackground="#bbf7d0", highlightcolor="#bbf7d0"
+            )
             self.enqueue_log("Auto-move background monitor ENABLED (polling every 20 seconds).", "SUCCESS")
             self.stop_auto_move_event.clear()
             self.auto_move_thread = threading.Thread(target=self.auto_move_daemon_worker, daemon=True)
             self.auto_move_thread.start()
         else:
-            self.auto_move_indicator.config(text="OFF", bg="#f1f5f9", fg="#64748b")
+            self.auto_move_indicator.config(
+                text="ⓘ OFF", bg="#f1f5f9", fg="#64748b",
+                highlightbackground="#e2e8f0", highlightcolor="#e2e8f0"
+            )
             self.enqueue_log("Auto-move background monitor DISABLED.", "WARNING")
             self.stop_auto_move_event.set()
 
