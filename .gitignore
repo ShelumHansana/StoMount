@@ -1,0 +1,14 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# PyInstaller
+build/
+*.spec
+
+# IDE / System
+.vscode/
+.idea/
+Thumbs.db
+Desktop.ini
