@@ -90,6 +90,16 @@ Android phones often run out of space while MicroSD cards sit mostly idle, restr
       </ul>
     </td>
   </tr>
+  <tr>
+    <td colspan="2">
+      <h3>↩️ Storage Revert & Restore Wizard</h3>
+      <ul>
+        <li><b>1-Click Reset to Default Situation:</b> Reverts all 3rd-party apps back to phone internal memory (<code>pm move-package &lt;pkg&gt; internal</code>).</li>
+        <li><b>Restore Primary Media:</b> Migrates photos, downloads, and shared storage back to phone memory (<code>pm move-primary-storage internal</code>).</li>
+        <li><b>Convert SD Back to Portable:</b> Reformats the SD card back to standard portable storage (<code>sm partition public</code>) so it can be read on computers, cameras, and card readers again!</li>
+      </ul>
+    </td>
+  </tr>
 </table>
 
 ---

@@ -400,6 +400,48 @@ class ADBBackend:
             self.log(f"✕ Primary storage migration failed! {output}", "ERROR")
             return False, output
 
+    def move_package_to_internal(self, package_name):
+        """Run 'adb shell pm move-package <pkg> internal' to revert app to internal storage."""
+        self.log(f"Reverting {package_name} to internal phone storage...", "INFO")
+        success, stdout, stderr = self.run_adb(["shell", "pm", "move-package", package_name, "internal"], timeout=180)
+        output = (stdout + "\n" + stderr).strip()
+        if "Success" in output or (success and "failure" not in output.lower()):
+            self.log(f"✓ {package_name}: Reverted to internal storage!", "SUCCESS")
+            return True, output
+        else:
+            self.log(f"✕ {package_name}: Revert failed ({output})", "ERROR")
+            return False, output
+
+    def move_primary_storage_to_internal(self):
+        """Run 'adb shell pm move-primary-storage internal' to restore primary storage to phone."""
+        self.log("Restoring primary shared media & storage back to phone internal storage...", "INFO")
+        success, stdout, stderr = self.run_adb(["shell", "pm", "move-primary-storage", "internal"], timeout=300)
+        output = (stdout + "\n" + stderr).strip()
+        if "Success" in output or (success and "failure" not in output.lower()):
+            self.log(f"✓ Primary storage restored to internal storage! {output}", "SUCCESS")
+            return True, output
+        else:
+            self.log(f"✕ Primary storage restore failed! {output}", "ERROR")
+            return False, output
+
+    def partition_disk_public(self, disk_id):
+        """Run 'adb shell sm partition <diskid> public' to revert SD card to standard portable storage."""
+        self.log(f"Formatting disk {disk_id} as standard portable storage ('sm partition public')...", "INFO")
+        success, stdout, stderr = self.run_adb(["shell", "sm", "partition", disk_id, "public"], timeout=120)
+        output = (stdout + "\n" + stderr).strip()
+        if success and "error" not in output.lower():
+            self.log(f"✓ Successfully restored {disk_id} to portable SD card storage.", "SUCCESS")
+            return True, f"Successfully formatted {disk_id} back to portable storage."
+        return False, output or "Failed to partition disk as public."
+
+    def forget_volume(self, uuid_val):
+        """Run 'adb shell sm forget <uuid>' to clean up volume records."""
+        if not uuid_val:
+            return True, ""
+        self.log(f"Cleaning up adopted volume {uuid_val} records...", "INFO")
+        success, stdout, stderr = self.run_adb(["shell", "sm", "forget", uuid_val], timeout=30)
+        return success, (stdout + "\n" + stderr).strip()
+
 
 # ---------------------------------------------------------------------------
 # Help & Guide Dialog
@@ -887,8 +929,13 @@ class StoMountApp(tk.Tk):
         self.refresh_apps_btn = ttk.Button(row1, text="↻ Refresh List", command=self.refresh_app_list_thread)
         self.refresh_apps_btn.pack(side=tk.LEFT, padx=(0, 6))
 
-        self.move_single_btn = ttk.Button(row1, text="Move App", command=self.on_move_single_app_clicked)
-        self.move_single_btn.pack(side=tk.LEFT)
+        self.move_single_btn = ttk.Button(row1, text="Move to SD", command=self.on_move_single_app_clicked)
+        self.move_single_btn.pack(side=tk.LEFT, padx=(0, 4))
+        ToolTip(self.move_single_btn, "Moves the selected app to the adopted SD card.")
+
+        self.move_single_internal_btn = ttk.Button(row1, text="Move to Internal", command=self.on_move_single_internal_clicked)
+        self.move_single_internal_btn.pack(side=tk.LEFT)
+        ToolTip(self.move_single_internal_btn, "Reverts the selected app back to phone internal storage.")
 
         self.apps_count_lbl = tk.Label(row1, text="", font=("Segoe UI", 8), bg="#ffffff", fg="#64748b")
         self.apps_count_lbl.pack(side=tk.RIGHT)
@@ -915,7 +962,56 @@ class StoMountApp(tk.Tk):
         self.auto_move_indicator.pack(side=tk.LEFT, padx=(10, 0))
 
         # ===================================================================
-        # 6. Progress & Status Banner
+        # 6. Revert & Reset to Original Storage
+        # ===================================================================
+        revert_card = tk.LabelFrame(
+            main_content, text="  ↩️ Revert & Reset Storage (Restore to Original Situation)  ",
+            font=("Segoe UI", 9, "bold"), bg="#ffffff", fg="#b91c1c", padx=14, pady=10
+        )
+        revert_card.pack(fill=tk.X, pady=(0, 10))
+
+        revert_desc = tk.Label(
+            revert_card,
+            text="Need to revert back to default? Move apps and media back to internal storage, and restore the SD card as standard portable storage (FAT32/exFAT).",
+            font=("Segoe UI", 8), bg="#ffffff", fg="#64748b", justify=tk.LEFT
+        )
+        revert_desc.pack(anchor="w", pady=(0, 8))
+
+        revert_btn_row = tk.Frame(revert_card, bg="#ffffff")
+        revert_btn_row.pack(fill=tk.X)
+
+        self.revert_apps_btn = tk.Button(
+            revert_btn_row, text="📥 Move All Apps Back to Internal",
+            font=("Segoe UI", 9, "bold"), bg="#f8fafc", fg="#1e293b",
+            activebackground="#e2e8f0", activeforeground="#0f172a",
+            relief=tk.SOLID, bd=1, padx=10, pady=5, cursor="hand2",
+            command=self.on_revert_all_apps_clicked
+        )
+        self.revert_apps_btn.pack(side=tk.LEFT, padx=(0, 8))
+        ToolTip(self.revert_apps_btn, "Moves all 3rd-party apps and primary media back to phone internal storage.")
+
+        self.revert_sd_btn = tk.Button(
+            revert_btn_row, text="🔄 Format SD as Standard Portable",
+            font=("Segoe UI", 9, "bold"), bg="#f8fafc", fg="#b91c1c",
+            activebackground="#fee2e2", activeforeground="#991b1b",
+            relief=tk.SOLID, bd=1, padx=10, pady=5, cursor="hand2",
+            command=self.on_format_sd_public_clicked
+        )
+        self.revert_sd_btn.pack(side=tk.LEFT, padx=(0, 8))
+        ToolTip(self.revert_sd_btn, "Formats the SD card back to portable public storage ('sm partition public') so it can be read on PCs again.")
+
+        self.full_reset_btn = tk.Button(
+            revert_btn_row, text="⚡ Complete Storage Reset Wizard",
+            font=("Segoe UI", 9, "bold"), bg="#fee2e2", fg="#991b1b",
+            activebackground="#fecaca", activeforeground="#7f1d1d",
+            relief=tk.SOLID, bd=1, padx=12, pady=5, cursor="hand2",
+            command=self.on_full_reset_wizard_clicked
+        )
+        self.full_reset_btn.pack(side=tk.RIGHT)
+        ToolTip(self.full_reset_btn, "Automated 1-click restore: moves apps and media back, formats SD as portable, and clears StoMount session.")
+
+        # ===================================================================
+        # 7. Progress & Status Banner
         # ===================================================================
         self.progress_frame = tk.Frame(main_content, bg="#f8fafc")
         self.progress_frame.pack(fill=tk.X, pady=(0, 6))
@@ -1081,6 +1177,10 @@ class StoMountApp(tk.Tk):
         self.mount_btn.config(state=state)
         self.refresh_apps_btn.config(state=state)
         self.move_single_btn.config(state=state)
+        self.move_single_internal_btn.config(state=state)
+        self.revert_apps_btn.config(state=state)
+        self.revert_sd_btn.config(state=state)
+        self.full_reset_btn.config(state=state)
         self.uuid_entry.config(state="disabled" if busy else "normal")
         self.on_uuid_changed()
 
@@ -1578,6 +1678,212 @@ class StoMountApp(tk.Tk):
 
                 known_packages = current_packages
                 self.ui_queue.put(("SET_APPS", sorted(list(current_packages))))
+
+    # -----------------------------------------------------------------------
+    # Revert & Reset Storage Handlers
+    # -----------------------------------------------------------------------
+    def on_move_single_internal_clicked(self):
+        pkg = self.single_app_combo.get().strip()
+        if not pkg:
+            messagebox.showwarning("No App Selected", "Please select an app from the dropdown list.", parent=self)
+            return
+
+        state, info, _ = self.backend.check_connection()
+        if state != "Connected":
+            messagebox.showerror("Device Not Connected", f"Device is {state}. Please check USB connection.", parent=self)
+            return
+
+        def worker():
+            self.ui_queue.put(("SET_BUSY", True))
+            self.ui_queue.put(("PROGRESS_INDETERMINATE", f"Reverting {pkg} to phone internal storage..."))
+            ok, msg = self.backend.move_package_to_internal(pkg)
+            self.ui_queue.put(("PROGRESS_STOP", "Ready"))
+            self.ui_queue.put(("SET_BUSY", False))
+            if ok:
+                self.ui_queue.put(("ALERT", ("info", "App Reverted", f"'{pkg}' was successfully moved back to phone internal storage!")))
+            else:
+                self.ui_queue.put(("ALERT", ("error", "Revert Failed", f"Failed to revert '{pkg}':\n{msg}")))
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    def on_revert_all_apps_clicked(self):
+        state, info, _ = self.backend.check_connection()
+        if state != "Connected":
+            messagebox.showerror("Device Not Connected", f"Device is {state}. Please check USB connection.", parent=self)
+            return
+
+        confirm = messagebox.askyesno(
+            "Revert Apps to Internal Storage",
+            "This will move all 3rd-party apps and primary media storage back to your phone's internal memory.\n\n"
+            "Please ensure your phone has sufficient free internal storage.\n\n"
+            "Do you want to proceed?",
+            parent=self
+        )
+        if not confirm:
+            return
+
+        def worker():
+            self.ui_queue.put(("SET_BUSY", True))
+            self.ui_queue.put(("LOG", ("Starting migration of apps back to internal phone storage...", "INFO")))
+
+            packages = self.backend.list_third_party_packages()
+            total_pkgs = len(packages)
+
+            if total_pkgs > 0:
+                self.ui_queue.put(("PROGRESS_START", total_pkgs))
+                success_count = 0
+                fail_count = 0
+
+                for idx, pkg in enumerate(packages, start=1):
+                    prog_msg = f"Moving app {idx} of {total_pkgs} back to internal: {pkg}"
+                    self.ui_queue.put(("PROGRESS_UPDATE", (idx, total_pkgs, prog_msg)))
+
+                    ok, _ = self.backend.move_package_to_internal(pkg)
+                    if ok:
+                        success_count += 1
+                    else:
+                        fail_count += 1
+                    time.sleep(0.4)
+
+                self.ui_queue.put(("LOG", (f"Apps revert finished: {success_count} succeeded, {fail_count} skipped/failed.", "INFO")))
+
+            # Revert primary shared storage
+            self.ui_queue.put(("PROGRESS_INDETERMINATE", "Restoring primary media storage back to internal phone storage..."))
+            storage_ok, storage_msg = self.backend.move_primary_storage_to_internal()
+
+            self.ui_queue.put(("PROGRESS_STOP", "Revert Complete"))
+            self.ui_queue.put(("SET_BUSY", False))
+
+            summary = (
+                f"Revert Operation Finished!\n\n"
+                f"• Apps Processed: {total_pkgs}\n"
+                f"• Primary Media Restored: {'Success' if storage_ok else 'Failed'}\n\n"
+                f"All eligible apps and media have been moved back to phone internal storage."
+            )
+            self.ui_queue.put(("ALERT", ("info", "Storage Reverted", summary)))
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    def on_format_sd_public_clicked(self):
+        state, info, _ = self.backend.check_connection()
+        if state != "Connected":
+            messagebox.showerror("Device Not Connected", f"Device is {state}. Please check USB connection.", parent=self)
+            return
+
+        disks = self.backend.list_disks()
+        if not disks:
+            messagebox.showerror("No SD Card", "No SD card disk was found via ADB.", parent=self)
+            return
+
+        chosen_disk = disks[0]
+
+        confirm = messagebox.askyesno(
+            "Format SD Card to Portable",
+            f"This will reformat disk '{chosen_disk}' as standard portable storage (FAT32/exFAT).\n\n"
+            "⚠️ Important: Any remaining files on the SD card will be erased!\n"
+            "Make sure you have already moved your apps back to internal storage.\n\n"
+            "Do you want to reformat this card as portable storage?",
+            parent=self
+        )
+        if not confirm:
+            return
+
+        def worker():
+            self.ui_queue.put(("SET_BUSY", True))
+            self.ui_queue.put(("PROGRESS_INDETERMINATE", f"Formatting {chosen_disk} as standard portable storage..."))
+
+            # Forget old volume records if any
+            old_uuid = self.uuid_var.get().strip()
+            if old_uuid:
+                self.backend.forget_volume(old_uuid)
+
+            ok, msg = self.backend.partition_disk_public(chosen_disk)
+
+            self.ui_queue.put(("PROGRESS_STOP", "Ready"))
+            self.ui_queue.put(("SET_BUSY", False))
+
+            if ok:
+                self.ui_queue.put(("SET_UUID", ""))
+                self.ui_queue.put(("ALERT", ("info", "SD Card Restored", f"MicroSD Card '{chosen_disk}' is now formatted as standard portable storage!\n\nYou can now use it normally or plug it into other PCs/devices.")))
+            else:
+                self.ui_queue.put(("ALERT", ("error", "Format Failed", f"Failed to format as portable:\n{msg}")))
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    def on_full_reset_wizard_clicked(self):
+        state, info, _ = self.backend.check_connection()
+        if state != "Connected":
+            messagebox.showerror("Device Not Connected", f"Device is {state}. Please check USB connection.", parent=self)
+            return
+
+        disks = self.backend.list_disks()
+        if not disks:
+            messagebox.showerror("No SD Card", "No SD card disk was found via ADB.", parent=self)
+            return
+
+        chosen_disk = disks[0]
+
+        confirm = messagebox.askyesno(
+            "Complete Storage Reset Wizard",
+            "This will completely reset your phone & SD card back to the original situation:\n\n"
+            "1. Move all 3rd-party apps back to phone internal storage\n"
+            "2. Restore primary media and downloads to internal storage\n"
+            "3. Format the MicroSD card back to standard portable storage (FAT32/exFAT)\n"
+            "4. Reset StoMount session\n\n"
+            "⚠️ Please ensure phone internal storage has enough free space!\n\n"
+            "Do you want to run the Complete Storage Reset Wizard?",
+            parent=self
+        )
+        if not confirm:
+            return
+
+        def worker():
+            self.ui_queue.put(("SET_BUSY", True))
+            self.ui_queue.put(("LOG", ("==================================================", "INFO")))
+            self.ui_queue.put(("LOG", ("Starting Complete Storage Reset Wizard...", "INFO")))
+
+            # Step 1: Revert all apps
+            packages = self.backend.list_third_party_packages()
+            total_pkgs = len(packages)
+
+            if total_pkgs > 0:
+                self.ui_queue.put(("PROGRESS_START", total_pkgs))
+                for idx, pkg in enumerate(packages, start=1):
+                    prog_msg = f"[Reset 1/3] Moving app {idx} of {total_pkgs} back to internal: {pkg}"
+                    self.ui_queue.put(("PROGRESS_UPDATE", (idx, total_pkgs, prog_msg)))
+                    self.backend.move_package_to_internal(pkg)
+                    time.sleep(0.4)
+
+            # Step 2: Restore primary storage
+            self.ui_queue.put(("PROGRESS_INDETERMINATE", "[Reset 2/3] Restoring primary shared storage to internal..."))
+            self.backend.move_primary_storage_to_internal()
+
+            # Step 3: Format SD card back to public
+            self.ui_queue.put(("PROGRESS_INDETERMINATE", f"[Reset 3/3] Formatting {chosen_disk} as standard portable storage..."))
+            old_uuid = self.uuid_var.get().strip()
+            if old_uuid:
+                self.backend.forget_volume(old_uuid)
+
+            format_ok, format_msg = self.backend.partition_disk_public(chosen_disk)
+
+            # Step 4: Reset StoMount session
+            self.ui_queue.put(("SET_UUID", ""))
+            self.ui_queue.put(("PROGRESS_STOP", "Reset Finished"))
+            self.ui_queue.put(("SET_BUSY", False))
+
+            self.ui_queue.put(("LOG", ("==================================================", "SUCCESS")))
+            self.ui_queue.put(("LOG", ("Complete Storage Reset Wizard finished successfully!", "SUCCESS")))
+
+            summary = (
+                f"Storage Reset Complete!\n\n"
+                f"• All apps reverted to phone internal storage\n"
+                f"• Primary media restored to internal storage\n"
+                f"• SD Card '{chosen_disk}' formatted as standard portable storage\n\n"
+                f"Your storage is back to its original state."
+            )
+            self.ui_queue.put(("ALERT", ("info", "Storage Reset Complete", summary)))
+
+        threading.Thread(target=worker, daemon=True).start()
 
 
 # ---------------------------------------------------------------------------
