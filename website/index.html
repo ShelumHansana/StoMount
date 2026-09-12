@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>StoMount — Turn MicroSD Cards into Adopted Internal Android Storage</title>
+  <meta name="description" content="StoMount is a free, modern Windows desktop app that enables Android Adopted Storage over ADB with a 2-step setup wizard, auto-move daemon, and zero setup.">
+  <meta name="keywords" content="StoMount, Android Adopted Storage, adoptable storage, microSD to internal storage, adb sm partition, android storage expander">
+  
+  <!-- OpenGraph / Social Sharing -->
+  <meta property="og:title" content="StoMount — Android Adopted Storage Manager">
+  <meta property="og:description" content="Break Android storage limits. Seamlessly adopt MicroSD cards as encrypted internal storage with 1-click ADB automation.">
+  <meta property="og:image" content="assets/app_icon.png">
+  <meta property="og:type" content="website">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="assets/app_icon.png">
+
+  <!-- Google Fonts: Outfit & Plus Jakarta Sans & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Outfit:wght@500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- Ambient Mesh Glow Background -->
+  <div class="bg-mesh" aria-hidden="true">
+    <div class="mesh-orb mesh-orb-1"></div>
+    <div class="mesh-orb mesh-orb-2"></div>
+    <div class="mesh-orb mesh-orb-3"></div>
+  </div>
+
+  <!-- ==========================================================================
+       Navigation Bar
+       ========================================================================== -->
+  <header class="navbar">
+    <div class="nav-container">
+      <a href="#overview" class="nav-brand" aria-label="StoMount Home">
+        <img src="assets/app_icon.png" alt="StoMount Logo" class="brand-icon">
+        <span class="brand-title">StoMount</span>
+        <span class="brand-badge">v1.2.0</span>
+      </a>
+
+      <ul class="nav-links" id="navLinks">
+        <li><a href="#overview" class="nav-link active">Overview</a></li>
+        <li><a href="#visualizer" class="nav-link">Live Visualizer</a></li>
+        <li><a href="#workflow" class="nav-link">How It Works</a></li>
+        <li><a href="#compatibility" class="nav-link">Compatibility</a></li>
+        <li><a href="#downloads" class="nav-link">Downloads</a></li>
+        <li><a href="#faq" class="nav-link">FAQ</a></li>
+      </ul>
+
+      <div class="nav-actions">
+        <button class="btn btn-primary" onclick="openDownloadModal('setup')">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+          </svg>
+          <span>Download Free</span>
+        </button>
+        <button class="mobile-toggle" id="mobileToggle" aria-label="Toggle Navigation Menu">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="3" y1="12" x2="21" y2="12"></line>
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <line x1="3" y1="18" x2="21" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <!-- ==========================================================================
+         Hero Section
+         ========================================================================== -->
+    <section class="hero container">
+      <div class="hero-pill">
+        <span class="pulse-dot"></span>
+        <span>Latest Release v1.2.0 is Live with Auto-Move Daemon</span>
+      </div>
+
+      <h1 class="hero-title">
+        Turn Your MicroSD Card into <span class="text-gradient">Blazing-Fast Internal Android Storage</span>
+      </h1>
+
+      <p class="hero-subtitle">
+        Android phone out of space? StoMount safely activates Android's hidden Adopted Storage feature over ADB. Move apps, games, downloads, and media to your SD card with an intuitive 2-step setup wizard.
+      </p>
+
+      <div class="hero-actions">
+        <button class="btn btn-primary btn-lg" onclick="openDownloadModal('setup')">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+          </svg>
+          <span>Download for Windows (Free)</span>
+        </button>
+
+        <a href="#visualizer" class="btn btn-secondary btn-lg" onclick="document.querySelector('.tab-btn[data-target=visualizer]').click()">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="5 3 19 12 5 21 5 3"></polygon>
+          </svg>
+          <span>Try Interactive Visualizer</span>
+        </a>
+      </div>
+
+      <div class="hero-meta-badges">
+        <div class="meta-item">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+          <span>100% Free & Open Source (MIT)</span>
+        </div>
+        <div class="meta-item">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#00F0FF" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+          <span>Official Google ADB Embedded</span>
+        </div>
+        <div class="meta-item">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#38BDF8" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+          <span>Zero Dependencies Needed</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==========================================================================
+         Tabbed Navigation Bar (Pages Router)
+         ========================================================================== -->
+    <div class="container" id="tabsBar">
+      <nav class="view-tabs-bar" aria-label="Page Tabs">
+        <button class="tab-btn active" data-target="overview">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+          <span>Overview</span>
+        </button>
+        <button class="tab-btn" data-target="visualizer">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polygon points="10 8 16 12 10 16 10 8"></polygon></svg>
+          <span>Live Visualizer</span>
+        </button>
+        <button class="tab-btn" data-target="workflow">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="6" y1="3" x2="6" y2="15"></line><circle cx="18" cy="6" r="3"></circle><circle cx="6" cy="18" r="3"></circle><path d="M18 9a9 9 0 0 1-9 9"></path></svg>
+          <span>How It Works</span>
+        </button>
+        <button class="tab-btn" data-target="compatibility">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg>
+          <span>Compatibility</span>
+        </button>
+        <button class="tab-btn" data-target="downloads">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+          <span>Downloads</span>
+        </button>
+      </nav>
+    </div>
+
+    <!-- ==========================================================================
+         PAGE 1: OVERVIEW & FEATURES
+         ========================================================================== -->
+    <section class="tab-page active container" id="page-overview">
+      <div class="section-title-wrap">
+        <span class="section-tag">Core Capabilities</span>
+        <h2 class="section-title">Engineered to liberate phone storage safely</h2>
+        <p class="section-desc">
+          OEMs like Samsung, Xiaomi, and Motorola hide adopted storage in standard menus. StoMount bridges the gap through Android's secure native bridge.
+        </p>
+      </div>
+
+      <div class="features-grid">
+        <!-- Feature 1 -->
+        <article class="feature-card">
+          <div class="feature-icon-box">
+            <img src="assets/card_icon_sd.png" alt="MicroSD Icon">
+          </div>
+          <h3>1-Click SD Card Adoption</h3>
+          <p>
+            Detects all attached physical SD card disks automatically. Formats the card into an encrypted adopted volume (<code>sm partition private</code>) with strict double-confirmation protection.
+          </p>
+          <ul class="feature-list">
+            <li>Automatic disk UUID polling</li>
+            <li>Two-factor wipe prevention</li>
+            <li>Hardware-level ext4/f2fs preparation</li>
+          </ul>
+        </article>
+
+        <!-- Feature 2 -->
+        <article class="feature-card">
+          <div class="feature-icon-box">
+            <img src="assets/card_icon_apps.png" alt="Apps Icon">
+          </div>
+          <h3>Batch App & Media Migration</h3>
+          <p>
+            Scans all 3rd-party user applications and batch migrates them to the adopted SD card in one click. Migrates internal photos and downloads as well.
+          </p>
+          <ul class="feature-list">
+            <li>Instant 3rd-party app detection</li>
+            <li>Real-time migration progress bar</li>
+            <li>Primary storage media relocation</li>
+          </ul>
+        </article>
+
+        <!-- Feature 3 -->
+        <article class="feature-card">
+          <div class="feature-icon-box">
+            <img src="assets/icon_settings.png" alt="Daemon Icon">
+          </div>
+          <h3>Background Auto-Move Daemon</h3>
+          <p>
+            Leave StoMount running while using your phone. The background monitor scans for newly installed Play Store apps and automatically transfers them to the SD card.
+          </p>
+          <ul class="feature-list">
+            <li>Lightweight 20-second polling daemon</li>
+            <li>Zero battery drain on phone</li>
+            <li>Background tray notifications</li>
+          </ul>
+        </article>
+
+        <!-- Feature 4 -->
+        <article class="feature-card">
+          <div class="feature-icon-box">
+            <img src="assets/icon_usb.png" alt="ADB Icon">
+          </div>
+          <h3>Embedded Google ADB Bridge</h3>
+          <p>
+            Zero setup required. Official Google Android Debug Bridge (ADB) is built right inside StoMount. No Android Studio, command-line skills, or PATH configuration needed.
+          </p>
+          <ul class="feature-list">
+            <li>Official platform-tools included</li>
+            <li>Automatic 1-click driver downloader fallback</li>
+            <li>Instant USB device auto-detection</li>
+          </ul>
+        </article>
+
+        <!-- Feature 5 -->
+        <article class="feature-card">
+          <div class="feature-icon-box">
+            <img src="assets/icon_workflow.png" alt="Restore Icon">
+          </div>
+          <h3>1-Click Revert & Reset Wizard</h3>
+          <p>
+            Never feel locked in. If you ever want to upgrade phones or use your SD card in a camera again, StoMount moves apps back to internal and restores portable FAT32/exFAT in one step.
+          </p>
+          <ul class="feature-list">
+            <li>Reverts all apps back to phone</li>
+            <li>Restores primary media to internal memory</li>
+            <li>Formats SD back to standard portable</li>
+          </ul>
+        </article>
+
+        <!-- Feature 6 -->
+        <article class="feature-card">
+          <div class="feature-icon-box">
+            <img src="assets/icon_console.png" alt="Console Icon">
+          </div>
+          <h3>Real-Time Terminal Console</h3>
+          <p>
+            Total transparency. Watch every raw ADB command, return code, and status update executed in real-time in an embedded dark-themed terminal log.
+          </p>
+          <ul class="feature-list">
+            <li>Real-time command stream output</li>
+            <li>Color-coded warnings & errors</li>
+            <li>1-click log export for troubleshooting</li>
+          </ul>
+        </article>
+      </div>
+    </section>
+
+    <!-- ==========================================================================
+         PAGE 2: LIVE INTERACTIVE STORAGE VISUALIZER
+         ========================================================================== -->
+    <section class="tab-page container" id="page-visualizer">
+      <div class="section-title-wrap">
+        <span class="section-tag">Interactive Simulation</span>
+        <h2 class="section-title">See How StoMount Transforms Your Storage</h2>
+        <p class="section-desc">
+          Click the interactive buttons below to test the simulated adoption and migration workflow before plugging in your phone.
+        </p>
+      </div>
+
+      <div class="visualizer-card">
+        <!-- Visualizer Controls Top Bar -->
+        <div class="viz-header">
+          <div class="viz-title-group">
+            <h3>StoMount Interactive Simulation Deck</h3>
+            <p>Simulating: Samsung Galaxy A01 (SM-A015G) with 128 GB SanDisk MicroSD</p>
+          </div>
+          <div class="viz-controls">
+            <button class="btn btn-primary" id="vizBtnAdopt">
+              <span>⚡ 1. Mount SD as Internal</span>
+            </button>
+            <button class="btn btn-emerald" id="vizBtnMigrate" disabled>
+              <span>🚀 2. Move Apps & Content</span>
+            </button>
+            <button class="btn btn-secondary" id="vizBtnRevert" disabled>
+              <span>↩ Revert to Default</span>
+            </button>
+            <button class="btn btn-secondary" id="vizBtnReset" title="Reset Simulation">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"></polyline><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path></svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Stage: Phone Storage vs SD Card Storage -->
+        <div class="viz-stage">
+          <!-- Phone Internal Box -->
+          <div class="storage-box" id="vizPhoneBox">
+            <div class="storage-box-header">
+              <div class="storage-box-title">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#38BDF8" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg>
+                <span>Phone Internal Memory</span>
+              </div>
+              <span class="storage-badge badge-critical" id="vizPhoneBadge">Storage Full (91%)</span>
+            </div>
+
+            <div class="storage-meter">
+              <div class="meter-fill-system" id="meterPhoneSys" style="width: 25%;" title="Android OS & System (16 GB)"></div>
+              <div class="meter-fill-apps" id="meterPhoneApps" style="width: 66%;" title="Installed 3rd-Party Apps & Media"></div>
+            </div>
+
+            <div class="storage-stats">
+              <span id="vizPhoneUsed">58.4 GB</span>
+              <span id="vizPhoneTotal">64 GB (91% used)</span>
+            </div>
+
+            <div style="margin-top: 14px; font-size: 0.82rem; color: var(--text-muted);" id="vizPhoneStatus">
+              Critical: Apps cannot update & camera blocked
+            </div>
+          </div>
+
+          <!-- Transfer Conduit (Middle) -->
+          <div class="viz-conduit">
+            <div class="conduit-badge" id="vizConduitLabel">ADB Connected</div>
+            <div class="conduit-pipe">
+              <div class="conduit-stream" id="vizConduitStream"></div>
+            </div>
+            <span style="font-size: 0.72rem; color: var(--text-muted); font-family: var(--font-mono);">USB Debugging</span>
+          </div>
+
+          <!-- MicroSD Card Box -->
+          <div class="storage-box" id="vizSdBox">
+            <div class="storage-box-header">
+              <div class="storage-box-title">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#00F0FF" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"></rect><line x1="7" y1="8" x2="7" y2="10"></line><line x1="11" y1="8" x2="11" y2="10"></line><line x1="15" y1="8" x2="15" y2="10"></line></svg>
+                <span>MicroSD Card</span>
+              </div>
+              <span class="storage-badge badge-neutral" id="vizSdBadge">Standard Portable (FAT32)</span>
+            </div>
+
+            <div class="storage-meter">
+              <div class="meter-fill-adopted" id="meterSdAdopted" style="width: 3%;" title="MicroSD Used Space"></div>
+            </div>
+
+            <div class="storage-stats">
+              <span id="vizSdUsed">4.2 GB</span>
+              <span id="vizSdTotal">128 GB (3% used)</span>
+            </div>
+
+            <div style="margin-top: 14px; font-size: 0.82rem; color: var(--text-muted);" id="vizSdStatus">
+              Portable Media only (Apps forbidden by OS)
+            </div>
+          </div>
+        </div>
+
+        <!-- Terminal Output Log -->
+        <div class="terminal-box" id="vizTerminalLogs">
+          <div class="terminal-header">
+            <div class="terminal-dots">
+              <span class="terminal-dot dot-red"></span>
+              <span class="terminal-dot dot-yellow"></span>
+              <span class="terminal-dot dot-green"></span>
+            </div>
+            <span>StoMount Interactive Daemon Console</span>
+            <span>ONLINE</span>
+          </div>
+          <div>[00:00:01] <span class="log-info">Device connected: Galaxy A01 (SM-A015G)</span></div>
+          <div>[00:00:02] <span class="log-warn">Internal Memory warning: 91% Full (58.4 GB / 64 GB)</span></div>
+          <div>[00:00:03] <span class="log-cmd">MicroSD Card detected: 128 GB (Portable)</span></div>
+        </div>
+
+        <!-- Dynamic Capacity Slider Calculator -->
+        <div class="calc-wrapper">
+          <div class="calc-labels">
+            <h4>Select Your MicroSD Card Size:</h4>
+            <p>Calculates dynamic space liberated based on hardware capacity</p>
+          </div>
+          <div class="slider-group">
+            <div class="slider-chips">
+              <button class="chip" data-sd-size="32">32 GB</button>
+              <button class="chip" data-sd-size="64">64 GB</button>
+              <button class="chip active" data-sd-size="128">128 GB</button>
+              <button class="chip" data-sd-size="256">256 GB</button>
+              <button class="chip" data-sd-size="512">512 GB</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==========================================================================
+         PAGE 3: 2-STEP WORKFLOW & SAFETY
+         ========================================================================== -->
+    <section class="tab-page container" id="page-workflow">
+      <div class="section-title-wrap">
+        <span class="section-tag">Simple & Safe</span>
+        <h2 class="section-title">The 2-Step Primary Workflow</h2>
+        <p class="section-desc">
+          StoMount was built from the ground up to make complex low-level ADB operations effortless, safe, and transparent.
+        </p>
+      </div>
+
+      <div class="step-cards-container">
+        <!-- Step 1 Card -->
+        <div class="step-card">
+          <div class="step-header">
+            <span class="step-number">STEP 01</span>
+            <img src="assets/card_icon_sd.png" alt="Adopt Step" class="step-icon">
+          </div>
+          <h3>Mount SD Card as Internal Storage</h3>
+          <p>
+            Connect your phone with USB Debugging enabled. StoMount scans your physical card (e.g., <code>disk:179,64</code>). Once you confirm with strict two-factor safety validation, StoMount formats the card into an adopted, hardware-encrypted private partition.
+          </p>
+          <div class="step-code-snippet">
+            <span>adb shell sm partition disk:179,64 private</span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+          </div>
+        </div>
+
+        <!-- Step 2 Card -->
+        <div class="step-card">
+          <div class="step-header">
+            <span class="step-number">STEP 02</span>
+            <img src="assets/card_icon_apps.png" alt="Migrate Step" class="step-icon">
+          </div>
+          <h3>Move All Apps & Content to SD Card</h3>
+          <p>
+            With the adopted storage volume mounted and verified, click Step 2. StoMount discovers every installed 3rd-party application and moves them one by one to your SD card, liberating gigabytes of precious phone memory in minutes.
+          </p>
+          <div class="step-code-snippet">
+            <span>adb shell pm move-package &lt;package&gt; &lt;uuid&gt;</span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==========================================================================
+         PAGE 4: OEM COMPATIBILITY MATRIX
+         ========================================================================== -->
+    <section class="tab-page container" id="page-compatibility">
+      <div class="section-title-wrap">
+        <span class="section-tag">Hardware Matrix</span>
+        <h2 class="section-title">Manufacturer & OEM Compatibility</h2>
+        <p class="section-desc">
+          Learn how different phone manufacturers handle adoptable storage and how to get maximum performance.
+        </p>
+      </div>
+
+      <div class="compat-grid">
+        <!-- Stock Android -->
+        <div class="compat-card">
+          <div class="compat-card-header">
+            <span class="compat-brand">Motorola / Nokia / Sony</span>
+            <span class="compat-status status-full">100% Native</span>
+          </div>
+          <p>Near-stock Android builds have complete native support for Adoptable Storage. StoMount completes Step 1 & Step 2 automatically with zero extra configuration required.</p>
+          <div class="compat-tip">
+            <strong>Pro Tip:</strong> Use a Class 10 / UHS-1 (A1 or A2 rated) MicroSD card for maximum app launch speeds.
+          </div>
+        </div>
+
+        <!-- Xiaomi / MIUI / HyperOS -->
+        <div class="compat-card">
+          <div class="compat-card-header">
+            <span class="compat-brand">Xiaomi / Redmi / POCO</span>
+            <span class="compat-status status-tweak">Requires 1 Toggle</span>
+          </div>
+          <p>MIUI and HyperOS disable adopted menus by default. Enabling Developer Options and turning on "Force allow apps on external" provides full app migration capability.</p>
+          <div class="compat-tip">
+            <strong>Setting:</strong> Settings > Additional Settings > Developer Options > "Force allow apps on external storage" = ON.
+          </div>
+        </div>
+
+        <!-- Samsung One UI -->
+        <div class="compat-card">
+          <div class="compat-card-header">
+            <span class="compat-brand">Samsung Galaxy (One UI)</span>
+            <span class="compat-status status-special">App-Specific Guide</span>
+          </div>
+          <p>Samsung One UI kernel disables File-Based Encryption (fscrypt) on external microSD partitions. Attempting adopted private storage may yield <code>Failure [-6]</code>.</p>
+          <div class="compat-tip">
+            <strong>Best Method for Samsung:</strong> Format SD as Standard Portable, enable "Force allow on external", then move apps via Settings > Apps > Storage > Change, or configure apps like Spotify directly to save offline media to SD!
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==========================================================================
+         PAGE 5: DOWNLOAD HUB
+         ========================================================================== -->
+    <section class="tab-page container" id="page-downloads">
+      <div class="download-hero-card">
+        <h2>Download StoMount for Windows</h2>
+        <p>Choose the installer or standalone portable package. Free, fully verified, and zero malware or telemetry.</p>
+        <div class="hero-meta-badges">
+          <span class="meta-item">Version: <strong>v1.2.0</strong></span>
+          <span class="meta-item">Architecture: <strong>Windows 10 / 11 (64-bit)</strong></span>
+          <span class="meta-item">License: <strong>MIT Open Source</strong></span>
+        </div>
+      </div>
+
+      <div class="download-cards-grid">
+        <!-- Installer -->
+        <div class="dl-card featured">
+          <span class="featured-ribbon">RECOMMENDED</span>
+          <img src="assets/app_icon.png" alt="Setup" class="dl-icon">
+          <h3>Windows Setup Wizard</h3>
+          <span class="dl-filename">StoMount_Setup.exe</span>
+          <p class="dl-desc">
+            Complete installer with Desktop shortcut, Start Menu integration, and clean uninstaller.
+          </p>
+          <a href="downloads/StoMount_Setup.exe" download="StoMount_Setup.exe" class="btn btn-primary" style="width: 100%;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+            <span>Download Installer</span>
+          </a>
+          <div class="dl-meta">
+            <span>Size: 21.8 MB</span>
+            <a href="javascript:void(0)" onclick="copyChecksum('914f6b29e01869cbfa361db8e7529402e264627b')" style="color: var(--text-accent); text-decoration: none;">Copy SHA256</a>
+          </div>
+        </div>
+
+        <!-- Standalone Portable -->
+        <div class="dl-card">
+          <img src="assets/app_icon.png" alt="Portable" class="dl-icon">
+          <h3>Portable Standalone</h3>
+          <span class="dl-filename">StoMount.exe</span>
+          <p class="dl-desc">
+            Single self-contained executable. Just double-click and run anywhere with zero installation.
+          </p>
+          <a href="downloads/StoMount.exe" download="StoMount.exe" class="btn btn-secondary" style="width: 100%;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+            <span>Download Portable</span>
+          </a>
+          <div class="dl-meta">
+            <span>Size: 17.0 MB</span>
+            <a href="javascript:void(0)" onclick="copyChecksum('c5496ba45b23d9a9fcb56ea789012fce4510001a')" style="color: var(--text-accent); text-decoration: none;">Copy SHA256</a>
+          </div>
+        </div>
+
+        <!-- Full ZIP Bundle -->
+        <div class="dl-card">
+          <img src="assets/app_icon.png" alt="ZIP Bundle" class="dl-icon">
+          <h3>Complete Distribution</h3>
+          <span class="dl-filename">StoMount-v1.2-Windows.zip</span>
+          <p class="dl-desc">
+            Full release archive including installer, standalone binary, high-res assets, and documentation.
+          </p>
+          <a href="downloads/StoMount-v1.2-Windows.zip" download="StoMount-v1.2-Windows.zip" class="btn btn-secondary" style="width: 100%;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+            <span>Download ZIP</span>
+          </a>
+          <div class="dl-meta">
+            <span>Size: 38.2 MB</span>
+            <a href="javascript:void(0)" onclick="copyChecksum('73ef19d6756201a09805d8f6110f03fa039bce22')" style="color: var(--text-accent); text-decoration: none;">Copy SHA256</a>
+          </div>
+        </div>
+      </div>
+
+      <!-- System Requirements -->
+      <div class="specs-box">
+        <h4>System Requirements & Prerequisite Checklist</h4>
+        <div class="specs-grid">
+          <div class="spec-item">
+            <div class="spec-title">Supported PC OS</div>
+            <div class="spec-val">Windows 10 / 11 (64-bit)</div>
+          </div>
+          <div class="spec-item">
+            <div class="spec-title">Android Version</div>
+            <div class="spec-val">Android 6.0 Marshmallow to 14+</div>
+          </div>
+          <div class="spec-item">
+            <div class="spec-title">Phone Connection</div>
+            <div class="spec-val">USB Cable with USB Debugging enabled</div>
+          </div>
+          <div class="spec-item">
+            <div class="spec-title">MicroSD Recommendation</div>
+            <div class="spec-val">Class 10 / UHS-1 / A1 or A2 rating</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==========================================================================
+         FAQ SECTION
+         ========================================================================== -->
+    <section class="container" id="faq" style="margin-top: 60px;">
+      <div class="section-title-wrap">
+        <span class="section-tag">Help & Clarity</span>
+        <h2 class="section-title">Frequently Asked Questions</h2>
+        <p class="section-desc">Got questions about adopted storage, safety, or compatibility? Find answers here.</p>
+      </div>
+
+      <div class="faq-container">
+        <div class="faq-item">
+          <button class="faq-question">
+            <span>What is Android Adopted Storage?</span>
+            <svg class="faq-chevron" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+          </button>
+          <div class="faq-answer">
+            <p>
+              Adopted Storage (introduced in Android 6.0) allows Android to format a removable microSD card as an encrypted extension of the phone's internal storage. Instead of storing only photos and music, the card becomes capable of storing installed apps, private application data, games, and system downloads directly.
+            </p>
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <button class="faq-question">
+            <span>Do I need to Root my Android phone?</span>
+            <svg class="faq-chevron" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+          </button>
+          <div class="faq-answer">
+            <p>
+              <strong>No, root is NOT required!</strong> StoMount operates entirely through standard Android Debug Bridge (ADB) permissions with developer mode enabled. Your phone's warranty and safety remain intact.
+            </p>
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <button class="faq-question">
+            <span>What happens if I eject or remove the SD card?</span>
+            <svg class="faq-chevron" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+          </button>
+          <div class="faq-answer">
+            <p>
+              Because adopted storage is encrypted with hardware-tied keys and treated as part of internal memory, you should keep the card inserted. If removed, any apps stored on the SD card will temporarily be inaccessible until the card is plugged back in.
+            </p>
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <button class="faq-question">
+            <span>Why does Samsung One UI show "Failure [-6]"?</span>
+            <svg class="faq-chevron" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+          </button>
+          <div class="faq-answer">
+            <p>
+              Samsung intentionally stripped Adoptable Storage support from One UI and blocks file-based encryption (fscrypt) on external microSD cards at the kernel level. For Samsung devices, we recommend formatting the SD card as standard portable storage, turning on "Force allow apps on external" in Developer Options, and moving individual app storage or media (such as Spotify offline music) directly.
+            </p>
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <button class="faq-question">
+            <span>Can I revert everything back to factory default?</span>
+            <svg class="faq-chevron" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+          </button>
+          <div class="faq-answer">
+            <p>
+              Yes! StoMount features a complete <strong>Storage Revert & Reset Wizard</strong>. It moves your apps and media back into phone internal memory, then formats the SD card back to standard portable FAT32/exFAT so it works normally in card readers and cameras again.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- ==========================================================================
+       Footer
+       ========================================================================== -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-top">
+        <div class="footer-brand">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <img src="assets/app_icon.png" alt="StoMount Logo" width="32" height="32" style="border-radius: 8px;">
+            <span style="font-weight: 800; color: #FFF; font-size: 1.15rem;">StoMount</span>
+          </div>
+          <p>
+            An open-source desktop utility engineered to unleash Android Adopted Storage and liberate phone memory safely.
+          </p>
+        </div>
+
+        <div class="footer-nav-col">
+          <h5>Navigation</h5>
+          <ul>
+            <li><a href="#overview">Overview</a></li>
+            <li><a href="#visualizer">Live Visualizer</a></li>
+            <li><a href="#workflow">How It Works</a></li>
+            <li><a href="#compatibility">Compatibility</a></li>
+          </ul>
+        </div>
+
+        <div class="footer-nav-col">
+          <h5>Downloads</h5>
+          <ul>
+            <li><a href="downloads/StoMount_Setup.exe" download="StoMount_Setup.exe">Windows Setup (.exe)</a></li>
+            <li><a href="downloads/StoMount.exe" download="StoMount.exe">Portable Standalone (.exe)</a></li>
+            <li><a href="downloads/StoMount-v1.2-Windows.zip" download="StoMount-v1.2-Windows.zip">Full Bundle (.zip)</a></li>
+          </ul>
+        </div>
+
+        <div class="footer-nav-col">
+          <h5>Community & Code</h5>
+          <ul>
+            <li><a href="https://github.com/ShelumHansana/StoMount" target="_blank" rel="noopener">GitHub Repository</a></li>
+            <li><a href="https://github.com/ShelumHansana/StoMount/issues" target="_blank" rel="noopener">Issue Tracker</a></li>
+            <li><a href="https://github.com/ShelumHansana/StoMount/blob/main/LICENSE" target="_blank" rel="noopener">MIT License</a></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="footer-bottom">
+        <div>© 2026 Shelum Hansana. Released under the MIT License.</div>
+        <div style="color: var(--text-muted);">Android is a trademark of Google LLC. StoMount is not affiliated with Google or Samsung.</div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- ==========================================================================
+       Download Action Modal
+       ========================================================================== -->
+  <div class="modal-overlay" id="downloadModal" role="dialog" aria-modal="true">
+    <div class="modal-card">
+      <button class="modal-close" id="modalClose" aria-label="Close modal">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      </button>
+
+      <div style="display: flex; align-items: center; gap: 14px; margin-bottom: 20px;">
+        <img src="assets/app_icon.png" alt="StoMount" width="48" height="48" style="border-radius: 12px;">
+        <div>
+          <h3 id="modalPkgTitle" style="font-size: 1.25rem;">StoMount_Setup.exe</h3>
+          <span style="color: var(--accent-cyan); font-size: 0.8rem; font-family: var(--font-mono);">Version 1.2.0 (Windows 64-bit)</span>
+        </div>
+      </div>
+
+      <p id="modalPkgDesc" style="color: var(--text-secondary); font-size: 0.92rem; margin-bottom: 24px; line-height: 1.6;">
+        Standard Windows installer wizard with desktop icon, Start Menu shortcut, and uninstaller.
+      </p>
+
+      <a id="modalDownloadBtn" href="downloads/StoMount_Setup.exe" download="StoMount_Setup.exe" class="btn btn-primary btn-lg" style="width: 100%; margin-bottom: 16px;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+        <span>Download Now</span>
+      </a>
+
+      <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); border-radius: var(--radius-md); padding: 14px; font-size: 0.82rem; color: var(--text-muted); line-height: 1.6;">
+        <div style="font-weight: 700; color: #FFF; margin-bottom: 4px;">Quick 30-Second Setup:</div>
+        1. Run the downloaded file.<br>
+        2. Enable <strong>Developer Options > USB Debugging</strong> on your phone.<br>
+        3. Connect phone with USB cable & follow Steps 1 & 2 in StoMount!
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div class="toast-container" id="toastContainer" aria-live="polite"></div>
+
+  <!-- Interactive JavaScript Engine -->
+  <script src="app.js"></script>
+</body>
+</html>
