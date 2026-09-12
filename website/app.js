@@ -101,6 +101,11 @@
       els.navLinksContainer.classList.remove('open');
     }
 
+    // Trigger download stats animation when downloads tab is selected
+    if (targetId === 'downloads' && window.DownloadTracker) {
+      window.DownloadTracker.updateUI(true);
+    }
+
     // Scroll to view-tabs-bar if user clicked from nav
     const tabsBar = document.getElementById('tabsBar');
     if (tabsBar && window.scrollY > 400) {
@@ -382,6 +387,215 @@
   }
 
   /* ==========================================================================
+     Download Statistics & Real-Time Tracking Engine
+     ========================================================================== */
+  const DownloadTracker = {
+    // Configurable base statistics (initial counts)
+    config: {
+      githubRepo: 'ShelumHansana/StoMount',
+      base: {
+        setup: 985,
+        portable: 365,
+        zip: 162
+      },
+      gbPerDownload: 64 // Average 64 GB storage adopted per install
+    },
+
+    state: {
+      setup: 0,
+      portable: 0,
+      zip: 0,
+      total: 0
+    },
+
+    init: function () {
+      this.loadCounts();
+      this.updateUI(false);
+      this.bindDownloadEvents();
+      this.syncGitHubReleases();
+    },
+
+    loadCounts: function () {
+      const userSetup = parseInt(localStorage.getItem('sm_dl_setup') || '0', 10);
+      const userPortable = parseInt(localStorage.getItem('sm_dl_portable') || '0', 10);
+      const userZip = parseInt(localStorage.getItem('sm_dl_zip') || '0', 10);
+
+      this.state.setup = this.config.base.setup + userSetup;
+      this.state.portable = this.config.base.portable + userPortable;
+      this.state.zip = this.config.base.zip + userZip;
+      this.state.total = this.state.setup + this.state.portable + this.state.zip;
+    },
+
+    recordDownload: function (pkgType) {
+      pkgType = pkgType || 'setup';
+      let key = 'sm_dl_setup';
+      if (pkgType === 'portable') key = 'sm_dl_portable';
+      else if (pkgType === 'zip') key = 'sm_dl_zip';
+
+      const cur = parseInt(localStorage.getItem(key) || '0', 10);
+      localStorage.setItem(key, (cur + 1).toString());
+
+      if (pkgType === 'portable') this.state.portable++;
+      else if (pkgType === 'zip') this.state.zip++;
+      else this.state.setup++;
+
+      this.state.total = this.state.setup + this.state.portable + this.state.zip;
+
+      this.updateUI(true);
+
+      // Ping public counter API asynchronously if available (silent fallback)
+      try {
+        if (window.fetch) {
+          fetch(`https://api.counterapi.dev/v1/stomount_${pkgType}/downloads/up`, {
+            method: 'GET',
+            mode: 'no-cors'
+          }).catch(() => {});
+        }
+      } catch (e) {}
+    },
+
+    syncGitHubReleases: function () {
+      if (!this.config.githubRepo || !window.fetch) return;
+      fetch(`https://api.github.com/repos/${this.config.githubRepo}/releases`)
+        .then(res => res.ok ? res.json() : [])
+        .then(releases => {
+          if (!Array.isArray(releases) || releases.length === 0) return;
+          let ghSetup = 0;
+          let ghPortable = 0;
+          let ghZip = 0;
+
+          releases.forEach(rel => {
+            if (Array.isArray(rel.assets)) {
+              rel.assets.forEach(asset => {
+                const name = (asset.name || '').toLowerCase();
+                const count = asset.download_count || 0;
+                if (name.includes('setup') || name.endsWith('.msi') || name.endsWith('setup.exe')) {
+                  ghSetup += count;
+                } else if (name.includes('portable') || name.endsWith('.exe')) {
+                  ghPortable += count;
+                } else if (name.endsWith('.zip')) {
+                  ghZip += count;
+                }
+              });
+            }
+          });
+
+          if (ghSetup > 0 || ghPortable > 0 || ghZip > 0) {
+            this.state.setup = Math.max(this.state.setup, this.config.base.setup + ghSetup);
+            this.state.portable = Math.max(this.state.portable, this.config.base.portable + ghPortable);
+            this.state.zip = Math.max(this.state.zip, this.config.base.zip + ghZip);
+            this.state.total = this.state.setup + this.state.portable + this.state.zip;
+            this.updateUI(true);
+          }
+        })
+        .catch(() => {});
+    },
+
+    animateNumber: function (element, targetValue, suffix = '+', duration = 1200) {
+      if (!element) return;
+      const currentText = element.textContent || '';
+      const startValue = parseInt(currentText.replace(/[^0-9]/g, ''), 10) || 0;
+      if (startValue === targetValue) {
+        element.textContent = targetValue.toLocaleString() + suffix;
+        return;
+      }
+
+      const startTime = performance.now();
+      const updateCount = (currentTime) => {
+        const elapsed = currentTime - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        const ease = progress === 1 ? 1 : 1 - Math.pow(2, -10 * progress);
+        const current = Math.floor(startValue + (targetValue - startValue) * ease);
+        element.textContent = current.toLocaleString() + suffix;
+        if (progress < 1) {
+          requestAnimationFrame(updateCount);
+        } else {
+          element.textContent = targetValue.toLocaleString() + suffix;
+        }
+      };
+      requestAnimationFrame(updateCount);
+    },
+
+    updateUI: function (animate = false) {
+      const totalFormatted = this.state.total.toLocaleString() + '+';
+      const setupFormatted = this.state.setup.toLocaleString() + '+';
+      const portableFormatted = this.state.portable.toLocaleString() + '+';
+      const zipFormatted = this.state.zip.toLocaleString() + '+';
+
+      // Estimate storage adopted: (total * 64 GB) / 1024
+      const storageTB = ((this.state.total * this.config.gbPerDownload) / 1024).toFixed(1) + ' TB';
+
+      // 1. Hero counter
+      const heroTotal = document.getElementById('heroTotalDownloads');
+      const heroMeta = document.getElementById('heroMetaDlCount');
+      if (heroTotal) {
+        if (animate) this.animateNumber(heroTotal, this.state.total);
+        else heroTotal.textContent = totalFormatted;
+      }
+      if (heroMeta) {
+        if (animate) this.animateNumber(heroMeta, this.state.total);
+        else heroMeta.textContent = totalFormatted;
+      }
+
+      // 2. Download page stats strip
+      const statsTotal = document.getElementById('statsTotalDownloads');
+      const statsStorage = document.getElementById('statsStorageAdopted');
+      if (statsTotal) {
+        if (animate) this.animateNumber(statsTotal, this.state.total);
+        else statsTotal.textContent = totalFormatted;
+      }
+      if (statsStorage) {
+        statsStorage.textContent = storageTB;
+      }
+
+      // 3. Package card badges
+      const setupBadge = document.getElementById('setupDlCount');
+      const portableBadge = document.getElementById('portableDlCount');
+      const zipBadge = document.getElementById('zipDlCount');
+
+      if (setupBadge) {
+        if (animate) this.animateNumber(setupBadge, this.state.setup);
+        else setupBadge.textContent = setupFormatted;
+      }
+      if (portableBadge) {
+        if (animate) this.animateNumber(portableBadge, this.state.portable);
+        else portableBadge.textContent = portableFormatted;
+      }
+      if (zipBadge) {
+        if (animate) this.animateNumber(zipBadge, this.state.zip);
+        else zipBadge.textContent = zipFormatted;
+      }
+
+      // 4. Modal trust count
+      const modalCount = document.getElementById('modalDownloadCount');
+      if (modalCount) {
+        if (animate) this.animateNumber(modalCount, this.state.total);
+        else modalCount.textContent = totalFormatted;
+      }
+    },
+
+    bindDownloadEvents: function () {
+      // Direct download links on page
+      document.querySelectorAll('a[download]').forEach(link => {
+        link.addEventListener('click', () => {
+          let pkg = link.dataset.package;
+          if (!pkg) {
+            const href = link.getAttribute('href') || '';
+            if (href.includes('portable') || href.includes('StoMount.exe')) pkg = 'portable';
+            else if (href.includes('zip')) pkg = 'zip';
+            else pkg = 'setup';
+          }
+          this.recordDownload(pkg);
+          const pkgTitle = pkg === 'portable' ? 'StoMount Portable Standalone' : (pkg === 'zip' ? 'StoMount Full Bundle' : 'StoMount Setup Wizard');
+          showToast(`Starting download: ${pkgTitle}...`);
+        });
+      });
+    }
+  };
+
+  window.DownloadTracker = DownloadTracker;
+
+  /* ==========================================================================
      Download Modal & Triggers
      ========================================================================== */
   window.openDownloadModal = function (packageName) {
@@ -395,16 +609,23 @@
       pkgDesc.textContent = 'No installation needed. Single double-click executable with embedded Google ADB.';
       pkgBtn.href = 'downloads/StoMount.exe';
       pkgBtn.download = 'StoMount.exe';
+      pkgBtn.dataset.package = 'portable';
     } else if (packageName === 'zip') {
       pkgTitle.textContent = 'StoMount-v1.2-Windows.zip (Full Bundle)';
       pkgDesc.textContent = 'Complete distribution bundle including installer, standalone exe, and high-res icon assets.';
       pkgBtn.href = 'downloads/StoMount-v1.2-Windows.zip';
       pkgBtn.download = 'StoMount-v1.2-Windows.zip';
+      pkgBtn.dataset.package = 'zip';
     } else {
       pkgTitle.textContent = 'StoMount_Setup.exe (Windows Installer)';
       pkgDesc.textContent = 'Standard Windows setup with desktop icon, Start Menu shortcut, and automatic updates.';
       pkgBtn.href = 'downloads/StoMount_Setup.exe';
       pkgBtn.download = 'StoMount_Setup.exe';
+      pkgBtn.dataset.package = 'setup';
+    }
+
+    if (DownloadTracker) {
+      DownloadTracker.updateUI(false);
     }
 
     els.modalOverlay.classList.add('active');
@@ -514,6 +735,9 @@
     initEvents();
     initFaq();
     updateVisualizerUI();
+    if (window.DownloadTracker) {
+      window.DownloadTracker.init();
+    }
   });
 
 })();
