@@ -539,8 +539,9 @@ class PartitionConfirmDialog(tk.Toplevel):
         self.disk_id = disk_id
         self.result = False
 
-        self.geometry("540x410")
-        self.resizable(False, False)
+        self.geometry("580x520")
+        self.minsize(540, 460)
+        self.resizable(True, True)
         self.transient(parent)
         self.grab_set()
 
@@ -562,8 +563,9 @@ class PartitionConfirmDialog(tk.Toplevel):
     def setup_ui(self):
         self.configure(bg="#f8fafc")
 
+        # 1. Header (pinned to top)
         header_frame = tk.Frame(self, bg="#fef2f2", padx=18, pady=14, relief=tk.SOLID, bd=1)
-        header_frame.pack(fill=tk.X)
+        header_frame.pack(fill=tk.X, side=tk.TOP)
 
         title_lbl = tk.Label(
             header_frame,
@@ -574,6 +576,31 @@ class PartitionConfirmDialog(tk.Toplevel):
         )
         title_lbl.pack(anchor="w")
 
+        # 2. Bottom buttons (pinned to bottom first so they are never clipped)
+        btn_frame = tk.Frame(self, bg="#f1f5f9", padx=16, pady=12)
+        btn_frame.pack(fill=tk.X, side=tk.BOTTOM)
+
+        self.cancel_btn = ttk.Button(btn_frame, text="Cancel (Keep Data Safe)", command=self.on_cancel)
+        self.cancel_btn.pack(side=tk.RIGHT, padx=(8, 0))
+
+        self.proceed_btn = tk.Button(
+            btn_frame,
+            text="Permanently Erase & Adopt SD Card",
+            font=("Segoe UI", 9, "bold"),
+            bg="#e2e8f0",
+            fg="#ffffff",
+            disabledforeground="#9ca3af",
+            activebackground="#b91c1c",
+            activeforeground="#ffffff",
+            relief=tk.FLAT,
+            padx=14,
+            pady=5,
+            state=tk.DISABLED,
+            command=self.on_proceed
+        )
+        self.proceed_btn.pack(side=tk.RIGHT)
+
+        # 3. Body content (fills remaining center space)
         body_frame = tk.Frame(self, bg="#f8fafc", padx=20, pady=14)
         body_frame.pack(fill=tk.BOTH, expand=True)
 
@@ -590,9 +617,9 @@ class PartitionConfirmDialog(tk.Toplevel):
             bg="#f8fafc",
             fg="#334155",
             justify=tk.LEFT,
-            wraplength=490
+            wraplength=530
         )
-        desc_lbl.pack(anchor="w", pady=(0, 14))
+        desc_lbl.pack(anchor="w", pady=(0, 12))
 
         # Checkbox
         self.check_var = tk.BooleanVar(value=False)
@@ -606,7 +633,7 @@ class PartitionConfirmDialog(tk.Toplevel):
             fg="#b91c1c",
             font=("Segoe UI", 9, "bold")
         )
-        chk.pack(anchor="w", pady=(0, 12))
+        chk.pack(anchor="w", pady=(0, 10))
 
         # Text prompt
         type_frame = tk.Frame(body_frame, bg="#ffffff", relief=tk.SOLID, bd=1, padx=12, pady=10)
@@ -631,30 +658,6 @@ class PartitionConfirmDialog(tk.Toplevel):
             bg="#f8fafc"
         )
         self.entry.pack(anchor="w")
-
-        # Bottom buttons
-        btn_frame = tk.Frame(self, bg="#f1f5f9", padx=16, pady=12)
-        btn_frame.pack(fill=tk.X, side=tk.BOTTOM)
-
-        self.cancel_btn = ttk.Button(btn_row := btn_frame, text="Cancel (Keep Data Safe)", command=self.on_cancel)
-        self.cancel_btn.pack(side=tk.RIGHT, padx=(8, 0))
-
-        self.proceed_btn = tk.Button(
-            btn_frame,
-            text="Permanently Erase & Adopt SD Card",
-            font=("Segoe UI", 9, "bold"),
-            bg="#dc2626",
-            fg="#ffffff",
-            disabledforeground="#9ca3af",
-            activebackground="#b91c1c",
-            activeforeground="#ffffff",
-            relief=tk.FLAT,
-            padx=14,
-            pady=5,
-            state=tk.DISABLED,
-            command=self.on_proceed
-        )
-        self.proceed_btn.pack(side=tk.RIGHT)
 
     def validate_input(self):
         typed = self.confirm_entry_var.get().strip()
