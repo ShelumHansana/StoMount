@@ -535,12 +535,12 @@ class GuideDialog(tk.Toplevel):
 class PartitionConfirmDialog(tk.Toplevel):
     def __init__(self, parent, disk_id):
         super().__init__(parent)
-        self.title("⚠️ Mandatory Confirmation - Erase SD Card")
+        self.title("⚠️ Confirmation - Adopt SD Card as Internal Storage")
         self.disk_id = disk_id
         self.result = False
 
-        self.geometry("580x520")
-        self.minsize(540, 460)
+        self.geometry("580x490")
+        self.minsize(540, 450)
         self.resizable(True, True)
         self.transient(parent)
         self.grab_set()
@@ -554,122 +554,185 @@ class PartitionConfirmDialog(tk.Toplevel):
         py = parent.winfo_rooty()
         pw = parent.winfo_width()
         ph = parent.winfo_height()
-        w = self.winfo_width()
-        h = self.winfo_height()
+        w = 580
+        h = 490
         x = px + max(0, (pw - w) // 2)
         y = py + max(0, (ph - h) // 2)
-        self.geometry(f"+{x}+{y}")
+        self.geometry(f"{w}x{h}+{x}+{y}")
 
     def setup_ui(self):
         self.configure(bg="#f8fafc")
 
         # 1. Header (pinned to top)
-        header_frame = tk.Frame(self, bg="#fef2f2", padx=18, pady=14, relief=tk.SOLID, bd=1)
+        header_frame = tk.Frame(self, bg="#fef2f2", padx=18, pady=12, relief=tk.SOLID, bd=1)
         header_frame.pack(fill=tk.X, side=tk.TOP)
 
         title_lbl = tk.Label(
             header_frame,
-            text="⚠️ DATA LOSS WARNING: SD Card Will Be Formatted",
+            text="⚠️ Confirm SD Card Formatting",
             font=("Segoe UI", 11, "bold"),
             bg="#fef2f2",
             fg="#991b1b"
         )
         title_lbl.pack(anchor="w")
 
-        # 2. Bottom buttons (pinned to bottom first so they are never clipped)
+        subtitle_lbl = tk.Label(
+            header_frame,
+            text="Adopting storage will format the card and erase all existing content.",
+            font=("Segoe UI", 8),
+            bg="#fef2f2",
+            fg="#b91c1c"
+        )
+        subtitle_lbl.pack(anchor="w", pady=(2, 0))
+
+        # 2. Bottom buttons (pinned to bottom)
         btn_frame = tk.Frame(self, bg="#f1f5f9", padx=16, pady=12)
         btn_frame.pack(fill=tk.X, side=tk.BOTTOM)
 
-        self.cancel_btn = ttk.Button(btn_frame, text="Cancel (Keep Data Safe)", command=self.on_cancel)
+        self.cancel_btn = ttk.Button(btn_frame, text="Cancel", command=self.on_cancel)
         self.cancel_btn.pack(side=tk.RIGHT, padx=(8, 0))
 
         self.proceed_btn = tk.Button(
             btn_frame,
-            text="Permanently Erase & Adopt SD Card",
+            text="Format & Adopt SD Card",
             font=("Segoe UI", 9, "bold"),
             bg="#e2e8f0",
-            fg="#ffffff",
-            disabledforeground="#9ca3af",
+            fg="#94a3b8",
+            disabledforeground="#94a3b8",
             activebackground="#b91c1c",
             activeforeground="#ffffff",
             relief=tk.FLAT,
-            padx=14,
-            pady=5,
+            padx=16,
+            pady=6,
             state=tk.DISABLED,
             command=self.on_proceed
         )
         self.proceed_btn.pack(side=tk.RIGHT)
 
-        # 3. Body content (fills remaining center space)
-        body_frame = tk.Frame(self, bg="#f8fafc", padx=20, pady=14)
+        # 3. Body content (fills center space)
+        body_frame = tk.Frame(self, bg="#f8fafc", padx=20, pady=12)
         body_frame.pack(fill=tk.BOTH, expand=True)
 
-        desc_text = (
-            f"You are preparing to adopt disk '{self.disk_id}' as internal storage.\n\n"
-            "• ALL existing files, photos, videos, and music on this SD card will be PERMANENTLY ERASED.\n"
-            "• The card will be formatted with an encrypted filesystem and cannot be read on a PC without reformatting.\n"
-            "• Please ensure you have copied any needed files off the card before continuing."
+        # Summary box
+        info_box = tk.Frame(body_frame, bg="#ffffff", relief=tk.SOLID, bd=1, padx=12, pady=10)
+        info_box.pack(fill=tk.X, pady=(0, 12))
+
+        info_text = (
+            f"Target Disk: {self.disk_id}\n"
+            "• All existing files, photos, videos, and music will be permanently erased.\n"
+            "• The card will become encrypted internal storage for apps and data.\n"
+            "• Please ensure you have backed up any needed files to a computer first."
         )
-        desc_lbl = tk.Label(
-            body_frame,
-            text=desc_text,
-            font=("Segoe UI", 9),
-            bg="#f8fafc",
+        tk.Label(
+            info_box,
+            text=info_text,
+            font=("Segoe UI", 8),
+            bg="#ffffff",
             fg="#334155",
             justify=tk.LEFT,
-            wraplength=530
-        )
-        desc_lbl.pack(anchor="w", pady=(0, 12))
+            wraplength=510
+        ).pack(anchor="w")
 
-        # Checkbox
-        self.check_var = tk.BooleanVar(value=False)
-        chk = tk.Checkbutton(
+        tk.Label(
             body_frame,
-            text="✓  I understand that all data on this SD card will be completely wiped.",
-            variable=self.check_var,
-            command=self.validate_input,
+            text="Choose an action to proceed:",
+            font=("Segoe UI", 9, "bold"),
             bg="#f8fafc",
-            activebackground="#f8fafc",
-            fg="#b91c1c",
-            font=("Segoe UI", 9, "bold")
-        )
-        chk.pack(anchor="w", pady=(0, 10))
+            fg="#0f172a"
+        ).pack(anchor="w", pady=(0, 8))
 
-        # Text prompt
-        type_frame = tk.Frame(body_frame, bg="#ffffff", relief=tk.SOLID, bd=1, padx=12, pady=10)
-        type_frame.pack(fill=tk.X, pady=(0, 10))
+        self.choice_var = tk.StringVar(value="cancel")
 
-        type_lbl = tk.Label(
-            type_frame,
-            text='Confirmation step: Type "YES" in capital letters to unlock:',
+        # Option 1 Card: Safe / Cancel
+        self.opt1_frame = tk.Frame(body_frame, bg="#ffffff", relief=tk.SOLID, bd=1, padx=12, pady=8, cursor="hand2")
+        self.opt1_frame.pack(fill=tk.X, pady=(0, 8))
+
+        rb1 = tk.Radiobutton(
+            self.opt1_frame,
+            text="No, keep my SD card safe (Do not format)",
+            value="cancel",
+            variable=self.choice_var,
+            command=self.on_choice_change,
             font=("Segoe UI", 9, "bold"),
             bg="#ffffff",
-            fg="#1e293b"
+            activebackground="#ffffff",
+            fg="#1e293b",
+            selectcolor="#ffffff",
+            cursor="hand2"
         )
-        type_lbl.pack(anchor="w", pady=(0, 4))
-
-        self.confirm_entry_var = tk.StringVar()
-        self.confirm_entry_var.trace_add("write", lambda *args: self.validate_input())
-        self.entry = tk.Entry(
-            type_frame,
-            textvariable=self.confirm_entry_var,
-            font=("Segoe UI", 11, "bold"),
-            width=18,
-            bg="#f8fafc"
+        rb1.pack(anchor="w")
+        lbl1 = tk.Label(
+            self.opt1_frame,
+            text="Cancel the operation and return to StoMount without touching the card.",
+            font=("Segoe UI", 8),
+            bg="#ffffff",
+            fg="#64748b",
+            cursor="hand2"
         )
-        self.entry.pack(anchor="w")
+        lbl1.pack(anchor="w", padx=(24, 0))
 
-    def validate_input(self):
-        typed = self.confirm_entry_var.get().strip()
-        checked = self.check_var.get()
-        if checked and typed == "YES":
-            self.proceed_btn.config(state=tk.NORMAL, bg="#dc2626", cursor="hand2")
+        # Option 2 Card: Confirm / Format
+        self.opt2_frame = tk.Frame(body_frame, bg="#ffffff", relief=tk.SOLID, bd=1, padx=12, pady=8, cursor="hand2")
+        self.opt2_frame.pack(fill=tk.X, pady=(0, 6))
+
+        rb2 = tk.Radiobutton(
+            self.opt2_frame,
+            text="Yes, format this SD card as adopted internal storage",
+            value="format",
+            variable=self.choice_var,
+            command=self.on_choice_change,
+            font=("Segoe UI", 9, "bold"),
+            bg="#ffffff",
+            activebackground="#ffffff",
+            fg="#b91c1c",
+            selectcolor="#ffffff",
+            cursor="hand2"
+        )
+        rb2.pack(anchor="w")
+        lbl2 = tk.Label(
+            self.opt2_frame,
+            text="I understand that all data on this SD card will be permanently erased.",
+            font=("Segoe UI", 8),
+            bg="#ffffff",
+            fg="#64748b",
+            cursor="hand2"
+        )
+        lbl2.pack(anchor="w", padx=(24, 0))
+
+        # Bind card clicks
+        for w_item in (self.opt1_frame, lbl1):
+            w_item.bind("<Button-1>", lambda e: self.set_choice("cancel"))
+        for w_item in (self.opt2_frame, lbl2):
+            w_item.bind("<Button-1>", lambda e: self.set_choice("format"))
+
+    def set_choice(self, val):
+        self.choice_var.set(val)
+        self.on_choice_change()
+
+    def on_choice_change(self):
+        if self.choice_var.get() == "format":
+            self.proceed_btn.config(
+                state=tk.NORMAL,
+                bg="#dc2626",
+                fg="#ffffff",
+                cursor="hand2"
+            )
+            self.opt2_frame.config(bg="#fef2f2")
+            self.opt1_frame.config(bg="#ffffff")
         else:
-            self.proceed_btn.config(state=tk.DISABLED, bg="#e2e8f0", cursor="")
+            self.proceed_btn.config(
+                state=tk.DISABLED,
+                bg="#e2e8f0",
+                fg="#94a3b8",
+                cursor=""
+            )
+            self.opt1_frame.config(bg="#f8fafc")
+            self.opt2_frame.config(bg="#ffffff")
 
     def on_proceed(self):
-        self.result = True
-        self.destroy()
+        if self.choice_var.get() == "format":
+            self.result = True
+            self.destroy()
 
     def on_cancel(self):
         self.result = False
